@@ -1,14 +1,13 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Gamepad2, Settings, User, Trophy, MessageSquare } from 'lucide-react';
+import { Home, Gamepad2, Settings, User, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChat } from '@/contexts/ChatContext';
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Gamepad2, label: 'Games', path: '/games' },
-  { icon: Trophy, label: 'Leaderboard', path: '/leaderboard' },
   { icon: MessageSquare, label: 'Chat', path: '/chat' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
