@@ -60,6 +60,32 @@ const avatars = [
   '🦊', '🐺', '🦁', '🐯', '🐻', '🐼', '🐨', '🐸', '🐙', '🦄'
 ];
 
+const LOBBIES_STORAGE_KEY = 'playq-lobbies';
+
+// Helper to get all lobbies
+const getStoredLobbies = (): Record<string, Lobby> => {
+  try {
+    const stored = localStorage.getItem(LOBBIES_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    console.error('Error reading lobbies from localStorage:', error);
+    return {};
+  }
+};
+
+// Helper to save a lobby
+const saveLobbyToStore = (lobby: Lobby) => {
+  try {
+    const lobbies = getStoredLobbies();
+    lobbies[lobby.code] = lobby;
+    localStorage.setItem(LOBBIES_STORAGE_KEY, JSON.stringify(lobbies));
+    // Dispatch a storage event manually for the current tab
+    window.dispatchEvent(new Event('storage-update'));
+  } catch (error) {
+    console.error('Error saving lobby to localStorage:', error);
+  }
+};
+
 interface GameProviderProps {
   children: ReactNode;
 }
@@ -84,6 +110,51 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   });
 
   const [currentLobby, setCurrentLobby] = useState<Lobby | null>(null);
+
+  // Rehydrate lobby from URL if needed
+  React.useEffect(() => {
+    const path = window.location.pathname;
+    const lobbyMatch = path.match(/\/lobby\/([A-Z0-9]{6})/);
+    if (lobbyMatch && !currentLobby) {
+      const code = lobbyMatch[1];
+      const lobbies = getStoredLobbies();
+      const lobby = lobbies[code];
+      if (lobby) {
+        setCurrentLobby(lobby);
+      }
+    }
+  }, [currentLobby]);
+
+  // Sync with localStorage
+  React.useEffect(() => {
+    const syncLobby = () => {
+      if (currentLobby) {
+        const lobbies = getStoredLobbies();
+        const updatedLobby = lobbies[currentLobby.code];
+        if (updatedLobby && JSON.stringify(updatedLobby) !== JSON.stringify(currentLobby)) {
+          setCurrentLobby(updatedLobby);
+        }
+      }
+    };
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === LOBBIES_STORAGE_KEY) {
+        syncLobby();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('storage-update', syncLobby);
+
+    // Polling as a fallback for some environments or single-tab testing if needed
+    const interval = setInterval(syncLobby, 2000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('storage-update', syncLobby);
+      clearInterval(interval);
+    };
+  }, [currentLobby]);
 
   const createLobby = (gameType: Lobby['gameType']): Lobby => {
     if (!currentPlayer) throw new Error('No player set');
@@ -112,21 +183,42 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       createdAt: new Date(),
     };
 
+    saveLobbyToStore(lobby);
     setCurrentLobby(lobby);
     setCurrentPlayer(hostPlayer);
     return lobby;
   };
 
   const joinLobby = async (code: string): Promise<boolean> => {
-    // Simulate finding a lobby (in real app, this would be a server call)
-    // For now, we'll just simulate joining
+    if (!currentPlayer) throw new Error('No player set');
+
     console.log('Attempting to join lobby:', code);
     
     // Simulate a delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // In a real app, this would check the server
-    // For demo purposes, just return false (no lobby found)
+    const lobbies = getStoredLobbies();
+    const lobby = lobbies[code.toUpperCase()];
+
+    if (lobby) {
+      // Check if player is already in lobby
+      const isAlreadyIn = lobby.players.find(p => p.id === currentPlayer.id);
+
+      if (!isAlreadyIn) {
+        if (lobby.players.length >= lobby.settings.maxPlayers) {
+          throw new Error('Lobby is full');
+        }
+
+        const updatedPlayer = { ...currentPlayer, isHost: false, isReady: false };
+        lobby.players.push(updatedPlayer);
+        saveLobbyToStore(lobby);
+        setCurrentPlayer(updatedPlayer);
+      }
+
+      setCurrentLobby(lobby);
+      return true;
+    }
+
     return false;
   };
 
@@ -146,7 +238,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const updatedPlayers = currentLobby.players.map(p =>
       p.id === currentPlayer.id ? updatedPlayer : p
     );
-    setCurrentLobby({ ...currentLobby, players: updatedPlayers });
+    const updatedLobby = { ...currentLobby, players: updatedPlayers };
+    setCurrentLobby(updatedLobby);
+    saveLobbyToStore(updatedLobby);
   };
 
   const updateCurrentPlayer = (player: Player | null) => {
