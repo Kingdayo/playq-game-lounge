@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Gamepad2, Settings, Trophy, MessageSquare, LogOut, User } from 'lucide-react';
+import { Home, Gamepad2, Settings, MessageSquare, LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGame } from '@/contexts/GameContext';
 import { useChat } from '@/contexts/ChatContext';
@@ -10,7 +10,6 @@ import PlayerAvatar from './PlayerAvatar';
 const navItems = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Gamepad2, label: 'Games', path: '/games' },
-  { icon: Trophy, label: 'Leaderboard', path: '/leaderboard' },
   { icon: MessageSquare, label: 'Chat', path: '/chat' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
