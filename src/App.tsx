@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { GameProvider } from "@/contexts/GameContext";
 import { LoadingProvider } from "@/contexts/LoadingContext";
+import { ChatProvider } from "@/contexts/ChatContext";
 import Layout from "@/components/Layout";
 import Index from "./pages/Index";
 import Games from "./pages/Games";
@@ -22,7 +23,8 @@ const App = () => (
     <ThemeProvider>
       <LoadingProvider>
         <GameProvider>
-          <TooltipProvider>
+          <ChatProvider>
+            <TooltipProvider>
             <Toaster />
             <Sonner />
             <BrowserRouter>
@@ -38,7 +40,8 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
-          </TooltipProvider>
+            </TooltipProvider>
+          </ChatProvider>
         </GameProvider>
       </LoadingProvider>
     </ThemeProvider>

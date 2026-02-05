@@ -6,58 +6,20 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { useGame } from '@/contexts/GameContext';
+import { useChat, ChatRoom, ChatMessage } from '@/contexts/ChatContext';
 import { cn } from '@/lib/utils';
-
-interface ChatRoom {
-  id: string;
-  name: string;
-  lastMessage: string;
-  timestamp: Date;
-  unread: number;
-  avatar: string;
-  isGroup: boolean;
-}
-
-interface Message {
-  id: string;
-  sender: string;
-  avatar: string;
-  content: string;
-  timestamp: Date;
-  isSelf: boolean;
-}
-
-const mockRooms: ChatRoom[] = [
-  { id: '1', name: 'General', lastMessage: 'Anyone up for a game?', timestamp: new Date(), unread: 3, avatar: '🎮', isGroup: true },
-  { id: '2', name: 'Uno Fans', lastMessage: 'That +4 was brutal!', timestamp: new Date(Date.now() - 3600000), unread: 0, avatar: '🃏', isGroup: true },
-  { id: '3', name: 'ProGamer123', lastMessage: 'GG!', timestamp: new Date(Date.now() - 7200000), unread: 1, avatar: '🦊', isGroup: false },
-  { id: '4', name: 'CardMaster', lastMessage: 'Rematch tomorrow?', timestamp: new Date(Date.now() - 86400000), unread: 0, avatar: '🐺', isGroup: false },
-];
-
-const mockMessages: Message[] = [
-  { id: '1', sender: 'ProGamer123', avatar: '🦊', content: 'Hey everyone!', timestamp: new Date(Date.now() - 300000), isSelf: false },
-  { id: '2', sender: 'CardMaster', avatar: '🐺', content: 'Anyone want to play Uno?', timestamp: new Date(Date.now() - 240000), isSelf: false },
-  { id: '3', sender: 'You', avatar: '🎮', content: 'I\'m in! Create a lobby?', timestamp: new Date(Date.now() - 180000), isSelf: true },
-  { id: '4', sender: 'ProGamer123', avatar: '🦊', content: 'Let\'s go! I\'ll create one now', timestamp: new Date(Date.now() - 120000), isSelf: false },
-  { id: '5', sender: 'CardMaster', avatar: '🐺', content: 'Code is ABC123', timestamp: new Date(Date.now() - 60000), isSelf: false },
-];
 
 const Chat: React.FC = () => {
   const { currentPlayer } = useGame();
-  const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
-  const [roomMessages, setRoomMessages] = useState<Record<string, Message[]>>({
-    '1': mockMessages,
-    '2': [],
-    '3': [],
-    '4': [],
-  });
-  const [rooms, setRooms] = useState<ChatRoom[]>(mockRooms);
+  const { rooms, roomMessages, sendMessage, markAsRead } = useChat();
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const messages = selectedRoom ? roomMessages[selectedRoom.id] || [] : [];
+  const selectedRoom = rooms.find(r => r.id === selectedRoomId);
+  const messages = selectedRoomId ? roomMessages[selectedRoomId] || [] : [];
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -66,46 +28,37 @@ const Chat: React.FC = () => {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
     }
-  }, [messages, selectedRoom]);
+  }, [messages, selectedRoomId]);
+
+  useEffect(() => {
+    if (selectedRoomId) {
+      markAsRead(selectedRoomId);
+    }
+  }, [selectedRoomId, markAsRead, messages.length]);
 
   const handleSendMessage = () => {
-    if (!inputValue.trim() || !currentPlayer || !selectedRoom) return;
+    if (!inputValue.trim() || !currentPlayer || !selectedRoomId) return;
     
-    const newMessage: Message = {
-      id: crypto.randomUUID(),
-      sender: 'You',
-      avatar: currentPlayer.avatar,
-      content: inputValue.trim(),
-      timestamp: new Date(),
-      isSelf: true,
-    };
-    
-    setRoomMessages((prev) => ({
-      ...prev,
-      [selectedRoom.id]: [...(prev[selectedRoom.id] || []), newMessage],
-    }));
-
-    setRooms((prev) =>
-      prev.map((room) =>
-        room.id === selectedRoom.id
-          ? { ...room, lastMessage: inputValue.trim(), timestamp: new Date(), unread: 0 }
-          : room
-      )
+    sendMessage(
+      selectedRoomId,
+      inputValue.trim(),
+      currentPlayer.name,
+      currentPlayer.avatar
     );
 
     setInputValue('');
   };
 
-  const handleSelectRoom = (room: ChatRoom) => {
-    setSelectedRoom(room);
+  const handleSelectRoom = (roomId: string) => {
+    setSelectedRoomId(roomId);
     setIsMobileChatOpen(true);
-    // Clear unread for the selected room
-    setRooms((prev) =>
-      prev.map((r) => (r.id === room.id ? { ...r, unread: 0 } : r))
-    );
+    markAsRead(roomId);
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (date: Date | string | undefined) => {
+    if (!date) return '';
+    if (typeof date === 'string') return date;
+
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const hours = diff / 3600000;
@@ -157,10 +110,10 @@ const Chat: React.FC = () => {
               <motion.button
                 key={room.id}
                 whileHover={{ x: 4 }}
-                onClick={() => handleSelectRoom(room)}
+                onClick={() => handleSelectRoom(room.id)}
                 className={cn(
                   "w-full p-3 rounded-xl text-left transition-colors",
-                  selectedRoom?.id === room.id
+                  selectedRoomId === room.id
                     ? 'bg-primary/10 border border-primary/20'
                     : 'hover:bg-muted'
                 )}
@@ -168,7 +121,11 @@ const Chat: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center text-xl">
-                      {room.avatar}
+                      {room.avatar.startsWith('http') ? (
+                        <img src={room.avatar} alt={room.name} className="w-full h-full rounded-full" />
+                      ) : (
+                        room.avatar
+                      )}
                     </div>
                     {room.isGroup && (
                       <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-muted flex items-center justify-center">
@@ -186,12 +143,12 @@ const Chat: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground truncate">
-                      {room.lastMessage}
+                      {room.lastMessage || 'No messages yet'}
                     </p>
                   </div>
-                  {room.unread > 0 && (
+                  {room.unreadCount > 0 && (
                     <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">
-                      {room.unread}
+                      {room.unreadCount}
                     </span>
                   )}
                 </div>
@@ -219,14 +176,18 @@ const Chat: React.FC = () => {
                 <ChevronLeft className="w-6 h-6" />
               </Button>
               <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center text-lg flex-shrink-0">
-                {selectedRoom.avatar}
+                {selectedRoom.avatar.startsWith('http') ? (
+                  <img src={selectedRoom.avatar} alt={selectedRoom.name} className="w-full h-full rounded-full" />
+                ) : (
+                  selectedRoom.avatar
+                )}
               </div>
               <div>
                 <h3 className="font-display font-bold text-foreground">
                   {selectedRoom.name}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  {selectedRoom.isGroup ? '12 members' : 'Online'}
+                  {selectedRoom.isGroup ? `${selectedRoom.memberCount || 2} members` : 'Online'}
                 </p>
               </div>
             </div>
@@ -234,49 +195,55 @@ const Chat: React.FC = () => {
             {/* Messages */}
             <ScrollArea ref={scrollRef} className="flex-1 p-4">
               <div className="space-y-4">
-                {messages.map((message, index) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className={`flex ${message.isSelf ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`flex items-start gap-3 max-w-[70%] ${
-                        message.isSelf ? 'flex-row-reverse' : ''
-                      }`}
+                {messages.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm italic">
+                    No messages yet. Say hello!
+                  </div>
+                ) : (
+                  messages.map((message, index) => (
+                    <motion.div
+                      key={message.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className={`flex ${message.sender === currentPlayer?.name ? 'justify-end' : 'justify-start'}`}
                     >
-                      <PlayerAvatar
-                        avatar={message.avatar}
-                        name={message.sender}
-                        size="sm"
-                        showName={false}
-                      />
                       <div
-                        className={`rounded-2xl px-4 py-2 ${
-                          message.isSelf
-                            ? 'bg-gradient-primary text-primary-foreground'
-                            : 'bg-muted text-foreground'
+                        className={`flex items-start gap-3 max-w-[70%] ${
+                          message.sender === currentPlayer?.name ? 'flex-row-reverse' : ''
                         }`}
                       >
-                        {!message.isSelf && (
-                          <p className="text-xs font-medium mb-1 opacity-70">
-                            {message.sender}
-                          </p>
-                        )}
-                        <p className="text-sm">{message.content}</p>
-                        <p
-                          className={`text-xs mt-1 ${
-                            message.isSelf ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                        <PlayerAvatar
+                          avatar={message.avatar}
+                          name={message.sender}
+                          size="sm"
+                          showName={false}
+                        />
+                        <div
+                          className={`rounded-2xl px-4 py-2 ${
+                            message.sender === currentPlayer?.name
+                              ? 'bg-gradient-primary text-primary-foreground'
+                              : 'bg-muted text-foreground'
                           }`}
                         >
-                          {formatTime(message.timestamp)}
-                        </p>
+                          {message.sender !== currentPlayer?.name && (
+                            <p className="text-xs font-medium mb-1 opacity-70">
+                              {message.sender}
+                            </p>
+                          )}
+                          <p className="text-sm">{message.content}</p>
+                          <p
+                            className={`text-xs mt-1 ${
+                              message.sender === currentPlayer?.name ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                            }`}
+                          >
+                            {formatTime(message.timestamp)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  ))
+                )}
               </div>
             </ScrollArea>
 
