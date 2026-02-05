@@ -23,21 +23,21 @@ const App = () => (
       <LoadingProvider>
         <GameProvider>
           <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route element={<Layout />}>
-                <Route path="/" element={<Index />} />
-                <Route path="/games" element={<Games />} />
-                <Route path="/lobby/:code" element={<Lobby />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/leaderboard" element={<Leaderboard />} />
-                <Route path="/chat" element={<Chat />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route element={<Layout />}>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/games" element={<Games />} />
+                  <Route path="/lobby/:code" element={<Lobby />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/leaderboard" element={<Leaderboard />} />
+                  <Route path="/chat" element={<Chat />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
           </TooltipProvider>
         </GameProvider>
       </LoadingProvider>

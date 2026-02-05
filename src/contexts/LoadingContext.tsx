@@ -22,11 +22,17 @@ interface LoadingProviderProps {
 
 export const LoadingProvider: React.FC<LoadingProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const triggerLoading = useCallback((duration = 800) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       setIsLoading(false);
+      timeoutRef.current = null;
     }, duration);
   }, []);
 
