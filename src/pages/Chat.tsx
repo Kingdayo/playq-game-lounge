@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Users, Search, Plus } from 'lucide-react';
+import { Send, Users, Search, Plus, ChevronLeft } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { useGame } from '@/contexts/GameContext';
+import { cn } from '@/lib/utils';
 
 interface ChatRoom {
   id: string;
@@ -43,13 +44,32 @@ const mockMessages: Message[] = [
 
 const Chat: React.FC = () => {
   const { currentPlayer } = useGame();
-  const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(mockRooms[0]);
-  const [messages, setMessages] = useState<Message[]>(mockMessages);
+  const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
+  const [roomMessages, setRoomMessages] = useState<Record<string, Message[]>>({
+    '1': mockMessages,
+    '2': [],
+    '3': [],
+    '4': [],
+  });
+  const [rooms, setRooms] = useState<ChatRoom[]>(mockRooms);
   const [inputValue, setInputValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const messages = selectedRoom ? roomMessages[selectedRoom.id] || [] : [];
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  }, [messages, selectedRoom]);
 
   const handleSendMessage = () => {
-    if (!inputValue.trim() || !currentPlayer) return;
+    if (!inputValue.trim() || !currentPlayer || !selectedRoom) return;
     
     const newMessage: Message = {
       id: crypto.randomUUID(),
@@ -60,8 +80,29 @@ const Chat: React.FC = () => {
       isSelf: true,
     };
     
-    setMessages((prev) => [...prev, newMessage]);
+    setRoomMessages((prev) => ({
+      ...prev,
+      [selectedRoom.id]: [...(prev[selectedRoom.id] || []), newMessage],
+    }));
+
+    setRooms((prev) =>
+      prev.map((room) =>
+        room.id === selectedRoom.id
+          ? { ...room, lastMessage: inputValue.trim(), timestamp: new Date(), unread: 0 }
+          : room
+      )
+    );
+
     setInputValue('');
+  };
+
+  const handleSelectRoom = (room: ChatRoom) => {
+    setSelectedRoom(room);
+    setIsMobileChatOpen(true);
+    // Clear unread for the selected room
+    setRooms((prev) =>
+      prev.map((r) => (r.id === room.id ? { ...r, unread: 0 } : r))
+    );
   };
 
   const formatTime = (date: Date) => {
@@ -74,17 +115,20 @@ const Chat: React.FC = () => {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
-  const filteredRooms = mockRooms.filter((room) =>
+  const filteredRooms = rooms.filter((room) =>
     room.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="h-screen flex">
+    <div className="h-[calc(100vh-5rem)] sm:h-screen flex overflow-hidden">
       {/* Sidebar - Room List */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="w-full sm:w-80 flex-shrink-0 glass-card border-r border-border flex flex-col"
+        className={cn(
+          "w-full sm:w-80 flex-shrink-0 glass-card border-r border-border flex flex-col",
+          isMobileChatOpen && "hidden sm:flex"
+        )}
       >
         {/* Header */}
         <div className="p-4 border-b border-border">
@@ -113,12 +157,13 @@ const Chat: React.FC = () => {
               <motion.button
                 key={room.id}
                 whileHover={{ x: 4 }}
-                onClick={() => setSelectedRoom(room)}
-                className={`w-full p-3 rounded-xl text-left transition-colors ${
+                onClick={() => handleSelectRoom(room)}
+                className={cn(
+                  "w-full p-3 rounded-xl text-left transition-colors",
                   selectedRoom?.id === room.id
                     ? 'bg-primary/10 border border-primary/20'
                     : 'hover:bg-muted'
-                }`}
+                )}
               >
                 <div className="flex items-center gap-3">
                   <div className="relative">
@@ -157,12 +202,23 @@ const Chat: React.FC = () => {
       </motion.div>
 
       {/* Main Chat Area */}
-      <div className="hidden sm:flex flex-1 flex-col">
+      <div className={cn(
+        "flex-1 flex flex-col bg-background/50",
+        !isMobileChatOpen && "hidden sm:flex"
+      )}>
         {selectedRoom ? (
           <>
             {/* Chat Header */}
             <div className="p-4 border-b border-border flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center text-lg">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="sm:hidden"
+                onClick={() => setIsMobileChatOpen(false)}
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </Button>
+              <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center text-lg flex-shrink-0">
                 {selectedRoom.avatar}
               </div>
               <div>
@@ -176,7 +232,7 @@ const Chat: React.FC = () => {
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea ref={scrollRef} className="flex-1 p-4">
               <div className="space-y-4">
                 {messages.map((message, index) => (
                   <motion.div
