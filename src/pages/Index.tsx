@@ -79,7 +79,8 @@ const Index: React.FC = () => {
   };
 
   const handleJoinGame = async () => {
-    if (joinCode.length !== 6) {
+    const cleanedCode = joinCode.replace(/\s/g, '').toUpperCase();
+    if (cleanedCode.length !== 6) {
       setJoinError('Code must be 6 characters');
       return;
     }
@@ -88,9 +89,9 @@ const Index: React.FC = () => {
     setJoinError('');
     
     try {
-      const success = await joinLobby(joinCode.toUpperCase());
+      const success = await joinLobby(cleanedCode);
       if (success) {
-        navigate(`/lobby/${joinCode.toUpperCase()}`);
+        navigate(`/lobby/${cleanedCode}`);
       } else {
         setJoinError('Lobby not found. Check the code and try again.');
       }
@@ -286,12 +287,12 @@ const Index: React.FC = () => {
               <Input
                 value={joinCode}
                 onChange={(e) => {
-                  setJoinCode(e.target.value.toUpperCase().slice(0, 6));
+                  setJoinCode(e.target.value.toUpperCase());
                   setJoinError('');
                 }}
                 placeholder="ABC123"
                 className="text-center font-display text-2xl tracking-widest bg-muted border-0 h-14"
-                maxLength={6}
+                maxLength={10}
               />
               {joinError && (
                 <p className="text-destructive text-sm mt-2 text-center">{joinError}</p>
@@ -303,7 +304,7 @@ const Index: React.FC = () => {
               size="lg"
               className="w-full"
               onClick={handleJoinGame}
-              disabled={joinCode.length !== 6 || isJoining}
+              disabled={joinCode.replace(/\s/g, '').length !== 6 || isJoining}
             >
               {isJoining ? (
                 <>

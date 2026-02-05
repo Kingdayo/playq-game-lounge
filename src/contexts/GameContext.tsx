@@ -52,7 +52,14 @@ const generateCode = (): string => {
   for (let i = 0; i < 6; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return code;
+  return code.toUpperCase();
+};
+
+const generateId = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 };
 
 const avatars = [
@@ -66,7 +73,9 @@ const LOBBIES_STORAGE_KEY = 'playq-lobbies';
 const getStoredLobbies = (): Record<string, Lobby> => {
   try {
     const stored = localStorage.getItem(LOBBIES_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : {};
+    if (!stored) return {};
+    const parsed = JSON.parse(stored);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
   } catch (error) {
     console.error('Error reading lobbies from localStorage:', error);
     return {};
@@ -77,7 +86,11 @@ const getStoredLobbies = (): Record<string, Lobby> => {
 const saveLobbyToStore = (lobby: Lobby) => {
   try {
     const lobbies = getStoredLobbies();
-    lobbies[lobby.code] = lobby;
+    const normalizedCode = lobby.code.replace(/\s/g, '').toUpperCase();
+    lobbies[normalizedCode] = {
+      ...lobby,
+      code: normalizedCode
+    };
     localStorage.setItem(LOBBIES_STORAGE_KEY, JSON.stringify(lobbies));
     // Dispatch a storage event manually for the current tab
     window.dispatchEvent(new Event('storage-update'));
@@ -98,7 +111,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     }
     // Create default player
     const player: Player = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: `Player${Math.floor(Math.random() * 9999)}`,
       avatar: avatars[Math.floor(Math.random() * avatars.length)],
       isHost: false,
@@ -114,9 +127,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   // Rehydrate lobby from URL if needed
   React.useEffect(() => {
     const path = window.location.pathname;
-    const lobbyMatch = path.match(/\/lobby\/([A-Z0-9]{6})/);
+    const lobbyMatch = path.match(/\/lobby\/([a-zA-Z0-9]{6})/);
     if (lobbyMatch && !currentLobby) {
-      const code = lobbyMatch[1];
+      const code = lobbyMatch[1].toUpperCase();
       const lobbies = getStoredLobbies();
       const lobby = lobbies[code];
       if (lobby) {
@@ -169,7 +182,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const hostPlayer: Player = { ...currentPlayer, isHost: true, isReady: true };
     
     const lobby: Lobby = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       code: generateCode(),
       gameType,
       host: hostPlayer,
@@ -192,13 +205,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const joinLobby = async (code: string): Promise<boolean> => {
     if (!currentPlayer) throw new Error('No player set');
 
-    console.log('Attempting to join lobby:', code);
+    const normalizedCode = code.replace(/\s/g, '').toUpperCase();
+    console.log('Attempting to join lobby:', normalizedCode);
     
     // Simulate a delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     const lobbies = getStoredLobbies();
-    const lobby = lobbies[code.toUpperCase()];
+    const lobby = lobbies[normalizedCode];
 
     if (lobby) {
       // Check if player is already in lobby
