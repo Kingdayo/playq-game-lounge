@@ -12,7 +12,7 @@ const Layout: React.FC = () => {
 
   // Handle initial page load and tab navigation loading
   useEffect(() => {
-    triggerLoading(600);
+    triggerLoading(6000);
   }, [location.pathname, triggerLoading]);
 
   return (
