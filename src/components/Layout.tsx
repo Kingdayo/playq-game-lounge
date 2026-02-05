@@ -10,9 +10,16 @@ const Layout: React.FC = () => {
   const location = useLocation();
   const { isLoading, triggerLoading } = useLoading();
 
+  const isInitialMount = React.useRef(true);
+
   // Handle initial page load and tab navigation loading
   useEffect(() => {
-    triggerLoading(6000);
+    if (isInitialMount.current) {
+      triggerLoading(6000);
+      isInitialMount.current = false;
+    } else {
+      triggerLoading(2000);
+    }
   }, [location.pathname, triggerLoading]);
 
   return (
