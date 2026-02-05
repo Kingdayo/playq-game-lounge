@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { GameProvider } from "@/contexts/GameContext";
+import { LoadingProvider } from "@/contexts/LoadingContext";
 import Layout from "@/components/Layout";
 import Index from "./pages/Index";
 import Games from "./pages/Games";
@@ -19,8 +20,9 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
-      <GameProvider>
-        <TooltipProvider>
+      <LoadingProvider>
+        <GameProvider>
+          <TooltipProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -36,8 +38,9 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
-        </TooltipProvider>
-      </GameProvider>
+          </TooltipProvider>
+        </GameProvider>
+      </LoadingProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );

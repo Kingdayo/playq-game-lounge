@@ -1,12 +1,24 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
+import MaterialLoading from './MaterialLoading';
+import { useLoading } from '@/contexts/LoadingContext';
 
 const Layout: React.FC = () => {
+  const location = useLocation();
+  const { isLoading, triggerLoading } = useLoading();
+
+  // Handle initial page load and tab navigation loading
+  useEffect(() => {
+    triggerLoading(600);
+  }, [location.pathname, triggerLoading]);
+
   return (
     <div className="min-h-screen bg-background">
+      <MaterialLoading isLoading={isLoading} />
+
       {/* Background effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 bg-gradient-dark" />
