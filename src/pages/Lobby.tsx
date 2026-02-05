@@ -19,6 +19,7 @@ import PlayerAvatar from '@/components/PlayerAvatar';
 import VoiceChat from '@/components/VoiceChat';
 import ChatPanel from '@/components/ChatPanel';
 import { useGame } from '@/contexts/GameContext';
+import { useChat } from '@/contexts/ChatContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
@@ -26,6 +27,7 @@ const Lobby: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer, setPlayerReady, leaveLobby } = useGame();
+  const { sendMessage, roomMessages, createLobbyRoom } = useChat();
   
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,22 +35,21 @@ const Lobby: React.FC = () => {
   const [voiceConnected, setVoiceConnected] = useState(false);
   const [voiceMuted, setVoiceMuted] = useState(false);
   const [voiceVolume, setVoiceVolume] = useState(75);
-  const [messages, setMessages] = useState([
-    {
-      id: '1',
-      sender: 'System',
-      avatar: '🎮',
-      content: 'Lobby created! Share the code to invite friends.',
-      timestamp: new Date(),
-      isSystem: true,
-    },
-  ]);
+
+  const roomId = code ? `lobby-${code}` : '';
+  const messages = roomId ? roomMessages[roomId] || [] : [];
 
   useEffect(() => {
     // Simulate loading
     const timer = setTimeout(() => setIsLoading(false), 1500);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (code) {
+      createLobbyRoom(code);
+    }
+  }, [code, createLobbyRoom]);
 
   const handleCopyCode = () => {
     if (code) {
@@ -59,19 +60,14 @@ const Lobby: React.FC = () => {
   };
 
   const handleSendMessage = (content: string) => {
-    if (!currentPlayer) return;
+    if (!currentPlayer || !roomId) return;
     
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        sender: currentPlayer.name,
-        avatar: currentPlayer.avatar,
-        content,
-        timestamp: new Date(),
-        isSystem: false,
-      },
-    ]);
+    sendMessage(
+      roomId,
+      content,
+      currentPlayer.name,
+      currentPlayer.avatar
+    );
   };
 
   const handleStartGame = () => {
@@ -157,6 +153,9 @@ const Lobby: React.FC = () => {
               className="relative"
             >
               <MessageSquare className="w-4 h-4" />
+              {messages.length > 0 && (
+                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
+              )}
             </Button>
           </div>
         </div>

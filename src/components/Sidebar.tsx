@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Home, Gamepad2, Settings, Trophy, MessageSquare, LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGame } from '@/contexts/GameContext';
+import { useChat } from '@/contexts/ChatContext';
 import PlayerAvatar from './PlayerAvatar';
 
 const navItems = [
@@ -17,6 +18,8 @@ const navItems = [
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const { currentPlayer } = useGame();
+  const { getUnreadTotal } = useChat();
+  const unreadCount = getUnreadTotal();
 
   return (
     <motion.aside
@@ -61,6 +64,11 @@ const Sidebar: React.FC = () => {
                 )}
                 <Icon className="w-5 h-5" />
                 <span className="font-medium">{item.label}</span>
+                {item.label === 'Chat' && unreadCount > 0 && (
+                  <span className="absolute right-4 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </motion.div>
             </Link>
           );

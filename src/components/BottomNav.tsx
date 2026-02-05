@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, Gamepad2, Settings, User, Trophy, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useChat } from '@/contexts/ChatContext';
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/' },
@@ -14,6 +15,8 @@ const navItems = [
 
 const BottomNav: React.FC = () => {
   const location = useLocation();
+  const { getUnreadTotal } = useChat();
+  const unreadCount = getUnreadTotal();
 
   return (
     <motion.nav
@@ -39,12 +42,19 @@ const BottomNav: React.FC = () => {
                   transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 />
               )}
-              <Icon
-                className={cn(
-                  'w-5 h-5 transition-colors',
-                  isActive ? 'text-primary' : 'text-muted-foreground'
+              <div className="relative">
+                <Icon
+                  className={cn(
+                    'w-5 h-5 transition-colors',
+                    isActive ? 'text-primary' : 'text-muted-foreground'
+                  )}
+                />
+                {item.label === 'Chat' && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[8px] flex items-center justify-center font-bold">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
                 )}
-              />
+              </div>
               <span
                 className={cn(
                   'text-[10px] font-medium transition-colors',
