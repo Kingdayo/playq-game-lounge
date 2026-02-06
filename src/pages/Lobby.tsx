@@ -23,6 +23,7 @@ import { useChat } from '@/contexts/ChatContext';
 import { useUno } from '@/contexts/UnoContext';
 import { useLudo } from '@/contexts/LudoContext';
 import { useDominoes } from '@/contexts/DominoesContext';
+import { usePictionary } from '@/contexts/PictionaryContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
@@ -34,6 +35,7 @@ const Lobby: React.FC = () => {
   const { startGame: startUnoGame } = useUno();
   const { startGame: startLudoGame } = useLudo();
   const { startGame: startDominoesGame } = useDominoes();
+  const { startGame: startPictionaryGame } = usePictionary();
   
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -93,6 +95,8 @@ const Lobby: React.FC = () => {
         startLudoGame();
       } else if (currentLobby.gameType === 'dominoes') {
         startDominoesGame();
+      } else if (currentLobby.gameType === 'pictionary') {
+        startPictionaryGame();
       }
       await startLobbyGame();
     } catch (error) {
