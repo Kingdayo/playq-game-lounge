@@ -96,7 +96,7 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   }, [currentLobby?.settings.houseRules?.dominoesGameState, gameState]);
 
-  const saveGameState = useCallback((newState: DominoGameState) => {
+  const saveGameState = useCallback(async (newState: DominoGameState) => {
     setGameState(newState);
     if (storageKey) {
       localStorage.setItem(storageKey, JSON.stringify(newState));
@@ -111,16 +111,19 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
 
     if (currentLobby?.id && currentPlayer) {
-      supabase
-        .from('lobbies')
-        .update({
-          house_rules: {
-            ...(currentLobby.settings.houseRules || {}),
-            dominoesGameState: newState
-          }
-        })
-        .eq('id', currentLobby.id)
-        .catch(err => console.error('Failed to persist Dominoes state:', err));
+      try {
+        await supabase
+          .from('lobbies')
+          .update({
+            house_rules: {
+              ...(currentLobby.settings.houseRules || {}),
+              dominoesGameState: newState
+            }
+          })
+          .eq('id', currentLobby.id);
+      } catch (err) {
+        console.error('Failed to persist Dominoes state:', err);
+      }
     }
   }, [storageKey, currentLobby, currentPlayer]);
 
