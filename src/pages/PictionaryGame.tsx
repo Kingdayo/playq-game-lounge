@@ -273,7 +273,7 @@ const PictionaryGame: React.FC = () => {
                     <PlayerAvatar
                       avatar={player.avatar}
                       name={player.name}
-                      isSpeaking={voiceParticipants.some(vp => vp.name === player.name && vp.isSpeaking)}
+                      isSpeaking={voiceParticipants.some(vp => vp.id === player.id && vp.isSpeaking)}
                       size="sm"
                       isReady={player.hasGuessedCorrectly}
                     />
