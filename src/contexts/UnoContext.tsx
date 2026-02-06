@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface UnoContextType {
   gameState: UnoGameState | null;
-  playCard: (cardId: string) => void;
+  playCard: (cardId: string, wildColor?: UnoColor) => void;
   drawCard: () => void;
   callUno: () => void;
   catchUno: (targetPlayerId: string) => void;
@@ -152,7 +152,7 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, [currentLobby, currentPlayer, saveGameState]);
 
-  const playCard = useCallback((cardId: string) => {
+  const playCard = useCallback((cardId: string, wildColor?: UnoColor) => {
     if (!gameState || !currentPlayer) return;
 
     const playerIndex = gameState.players.findIndex(p => p.id === currentPlayer.id);
@@ -245,9 +245,16 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Wild cards need color selection
     if (card.color === 'wild') {
-      newState.status = 'playing'; // Still playing, but UI should show color picker
-      newState.currentPlayerIndex = playerIndex; // Stay on current player
-      newState.turnActionTaken = true; // But they've played
+      if (wildColor) {
+        newState.selectedColor = wildColor;
+        newState.lastActionMessage = `${player.name} played ${card.value} and chose ${wildColor}`;
+        newState.turnActionTaken = false;
+        // Keep the nextPlayerIndex we already calculated
+      } else {
+        newState.status = 'playing'; // Still playing, but UI should show color picker
+        newState.currentPlayerIndex = playerIndex; // Stay on current player
+        newState.turnActionTaken = true; // But they've played
+      }
     }
 
     saveGameState(newState);

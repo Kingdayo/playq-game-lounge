@@ -76,13 +76,7 @@ const UnoGame: React.FC = () => {
 
   const handleSelectColor = (color: UnoColor) => {
     if (selectedWildCardId) {
-        playCard(selectedWildCardId); // This will play it, then we need to set color
-        // In my current UnoContext, playCard for wild stays on current turn
-        // So we can call selectWildColor right after or wait.
-        // Let's adjust UnoContext or call it here.
-        // My UnoContext's playCard for wild keeps the turn.
-        // So I should call selectWildColor.
-        setTimeout(() => selectWildColor(color), 100);
+        playCard(selectedWildCardId, color);
         setShowColorPicker(false);
         setSelectedWildCardId(null);
     }
