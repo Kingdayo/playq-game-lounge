@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -207,12 +207,12 @@ const LudoGame: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-4 sm:p-8 flex flex-col items-center">
+    <div className="min-h-screen bg-zinc-950 p-2 sm:p-8 flex flex-col items-center">
       <Confetti isActive={gameState.status === 'finished'} duration={5000} />
 
-      <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-8 items-start">
+      <div className="w-full max-w-[1600px] flex flex-col xl:flex-row gap-4 sm:gap-8 items-start justify-center">
         {/* Left Side: Players & Info */}
-        <div className="w-full lg:w-64 space-y-6 order-2 lg:order-1">
+        <div className="w-full xl:w-80 space-y-4 sm:space-y-6 order-2 xl:order-1">
             <div className="glass-card p-4 rounded-2xl">
                 <h3 className="font-display text-sm font-bold text-primary mb-4 flex items-center gap-2">
                     <Users className="w-4 h-4" />
@@ -224,7 +224,9 @@ const LudoGame: React.FC = () => {
                             key={player.id}
                             className={cn(
                                 "flex items-center gap-3 p-2 rounded-xl border transition-all",
-                                gameState.currentPlayerIndex === idx ? "border-primary bg-primary/10 scale-105" : "border-white/5 bg-white/5"
+                                gameState.currentPlayerIndex === idx
+                                    ? "border-primary bg-primary/10 scale-105 shadow-[0_0_15px_rgba(187,100,50,0.2)]"
+                                    : "border-white/5 bg-white/5"
                             )}
                         >
                             <div className="relative">
@@ -248,9 +250,11 @@ const LudoGame: React.FC = () => {
                 </div>
             </div>
 
-            <div className="glass-card p-4 rounded-2xl">
-                <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Last Action</p>
-                <p className="text-sm text-white/80 italic">{gameState.lastActionMessage}</p>
+            <div className="glass-card p-4 rounded-2xl border border-white/5">
+                <p className="text-xs font-bold text-primary uppercase tracking-[0.2em] mb-2">Last Action</p>
+                <div className="min-h-[3rem] flex items-center">
+                    <p className="text-sm text-white/90 italic leading-relaxed">{gameState.lastActionMessage}</p>
+                </div>
             </div>
 
             <Button variant="ghost" className="w-full" onClick={() => navigate(`/lobby/${code}`)}>
@@ -265,9 +269,9 @@ const LudoGame: React.FC = () => {
         </div>
 
         {/* Center: Board */}
-        <div className="flex-1 flex flex-col items-center gap-6 order-1 lg:order-2">
-            <div className="relative aspect-square w-full max-w-[min(80vw,600px)] glass-card p-1 rounded-xl shadow-2xl overflow-hidden">
-                <div className="grid grid-cols-15 grid-rows-15 w-full h-full bg-zinc-900 border border-white/10">
+        <div className="w-full flex-1 flex flex-col items-center gap-4 sm:gap-8 order-1 xl:order-2">
+            <div className="relative aspect-square w-full max-w-[min(95vw,900px)] glass-card p-1 sm:p-2 rounded-xl shadow-2xl overflow-hidden border-2 border-primary/20">
+                <div className="grid grid-cols-15 grid-rows-15 w-full h-full bg-zinc-900 border border-white/5">
                     {Array.from({ length: 15 * 15 }).map((_, i) => {
                         const r = Math.floor(i / 15);
                         const c = i % 15;
@@ -403,7 +407,6 @@ interface TokenProps {
 
 const Token: React.FC<TokenProps> = ({ token, isSelectable, onClick, isStacked }) => {
     const bgColor = token.color === 'red' ? 'bg-red-500' : token.color === 'green' ? 'bg-green-500' : token.color === 'yellow' ? 'bg-yellow-500' : 'bg-blue-500';
-
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (isSelectable && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
@@ -427,10 +430,10 @@ const Token: React.FC<TokenProps> = ({ token, isSelectable, onClick, isStacked }
             }}
             onKeyDown={handleKeyDown}
             className={cn(
-                "w-4 h-4 sm:w-6 sm:h-6 rounded-full border-2 border-white/40 shadow-lg cursor-pointer transition-shadow focus:outline-none",
+                "w-4 h-4 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full border-2 border-white/40 shadow-lg cursor-pointer transition-shadow focus:outline-none",
                 bgColor,
                 isSelectable && "ring-4 ring-primary ring-offset-2 ring-offset-zinc-900 z-10 animate-pulse",
-                isStacked && "w-3 h-3 sm:w-4 sm:h-4 border-1"
+                isStacked && "w-3 h-3 sm:w-6 sm:h-6 md:w-7 md:h-7 border-1"
             )}
         />
     );

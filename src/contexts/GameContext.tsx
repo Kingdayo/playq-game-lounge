@@ -103,7 +103,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   // Rehydrate lobby from URL on mount
   React.useEffect(() => {
     const path = window.location.pathname;
-    const match = path.match(/\/(lobby|game\/uno)\/([a-zA-Z0-9]{6})/);
+    const match = path.match(/\/(lobby|game\/uno|game\/ludo)\/([a-zA-Z0-9]+)/);
     if (match && !activeLobbyCode) {
       setActiveLobbyCode(match[2].toUpperCase());
     }
