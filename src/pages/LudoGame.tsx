@@ -24,8 +24,8 @@ import { cn } from '@/lib/utils';
 const LudoGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { currentLobby, currentPlayer } = useGame();
-  const { participants: voiceParticipants, resumeAudio, connect: connectVoice } = useVoice();
+  const { currentLobby, currentPlayer, leaveLobby } = useGame();
+  const { participants: voiceParticipants, resumeAudio, connect: connectVoice, disconnect: disconnectVoice } = useVoice();
   const {
     gameState,
     rollDice,
@@ -33,6 +33,12 @@ const LudoGame: React.FC = () => {
     startGame,
     resetGame
   } = useLudo();
+
+  const handleLeave = () => {
+    disconnectVoice();
+    leaveLobby();
+    navigate('/');
+  };
 
   // Auto-connect to voice
   useEffect(() => {
@@ -69,8 +75,8 @@ const LudoGame: React.FC = () => {
                 Start Game
             </GamingButton>
           )}
-          <Button variant="ghost" className="mt-4" onClick={() => navigate(`/lobby/${code}`)}>
-              Back to Lobby
+          <Button variant="ghost" className="mt-4" onClick={handleLeave}>
+              Leave Lobby
           </Button>
         </motion.div>
       </div>
@@ -280,9 +286,9 @@ const LudoGame: React.FC = () => {
                 </div>
             </div>
 
-            <Button variant="ghost" className="w-full" onClick={() => navigate(`/lobby/${code}`)}>
+            <Button variant="ghost" className="w-full" onClick={handleLeave}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Lobby
+                Leave
             </Button>
 
             <Button variant="outline" size="sm" className="w-full opacity-50" onClick={() => resetGame()}>
@@ -415,7 +421,7 @@ const LudoGame: React.FC = () => {
                         <Button
                             variant="ghost"
                             className="w-full"
-                            onClick={() => navigate('/')}
+                            onClick={handleLeave}
                         >
                             Back to Home
                         </Button>

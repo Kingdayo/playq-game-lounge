@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useGame } from './GameContext';
 import { Player, VoiceParticipant } from '@/types/game';
@@ -108,12 +109,12 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const ignoreOfferRef = useRef<Record<string, boolean>>({});
   const remoteStreamsRef = useRef<Record<string, MediaStream>>({});
   const iceQueuesRef = useRef<Record<string, RTCIceCandidateInit[]>>({});
-  const cleanupTimeoutsRef = useRef<Record<string, any>>({});
-  const channelRef = useRef<any>(null);
+  const cleanupTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const localPlayerRef = useRef<Player | null>(null);
   const lobbyCodeRef = useRef<string | null>(null);
-  const handleSignalRef = useRef<any>(null);
-  const updateParticipantsListRef = useRef<any>(null);
+  const handleSignalRef = useRef<((payload: any) => Promise<void>) | null>(null);
+  const updateParticipantsListRef = useRef<(() => void) | null>(null);
 
   // Audio Refs
   const audioContextRef = useRef<AudioContext | null>(null);

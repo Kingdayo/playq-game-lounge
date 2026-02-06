@@ -156,7 +156,7 @@ const Lobby: React.FC = () => {
           <p className="text-muted-foreground mb-6">
             This lobby doesn't exist or has expired.
           </p>
-          <GamingButton variant="primary" onClick={() => navigate('/')}>
+          <GamingButton variant="primary" onClick={handleLeaveLobby}>
             Back to Home
           </GamingButton>
         </motion.div>
