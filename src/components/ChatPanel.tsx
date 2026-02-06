@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Smile } from 'lucide-react';
+import { X, Send, Smile, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -29,8 +29,20 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 }) => {
   const [inputValue, setInputValue] = React.useState('');
   const [showEmojis, setShowEmojis] = React.useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const emojis = ['😀', '😂', '🎮', '🎯', '🔥', '💪', '👏', '🎉', '😎', '🤔', '😅', '🙌'];
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      scrollToBottom();
+    }
+  }, [isOpen, messages]);
 
   const handleSend = () => {
     if (inputValue.trim()) {
@@ -58,7 +70,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="fixed right-0 top-0 bottom-0 w-full sm:w-96 z-50 glass-card border-l border-border flex flex-col"
+          className="fixed right-0 top-0 bottom-0 h-[100dvh] w-full sm:w-96 z-50 glass-card border-l border-border flex flex-col overflow-hidden"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
@@ -74,9 +86,15 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           </div>
 
           {/* Messages */}
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-4">
-              {messages.map((message, index) => (
+          <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+            <div className="space-y-4 pb-4">
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-50 pt-20">
+                  <MessageSquare className="w-12 h-12 mb-2" />
+                  <p>No messages yet</p>
+                </div>
+              ) : (
+                messages.map((message, index) => (
                 <motion.div
                   key={message.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -109,7 +127,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     </div>
                   )}
                 </motion.div>
-              ))}
+              ))
+              )}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 
