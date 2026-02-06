@@ -14,7 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      lobbies: {
+        Row: {
+          code: string
+          created_at: string
+          game_type: string
+          house_rules: Json | null
+          id: string
+          max_players: number
+          status: string
+          time_limit: number | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          game_type: string
+          house_rules?: Json | null
+          id?: string
+          max_players?: number
+          status?: string
+          time_limit?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          game_type?: string
+          house_rules?: Json | null
+          id?: string
+          max_players?: number
+          status?: string
+          time_limit?: number | null
+        }
+        Relationships: []
+      }
+      lobby_players: {
+        Row: {
+          avatar: string
+          id: string
+          is_host: boolean
+          is_online: boolean
+          is_ready: boolean
+          joined_at: string
+          lobby_id: string
+          name: string
+          player_id: string
+        }
+        Insert: {
+          avatar: string
+          id?: string
+          is_host?: boolean
+          is_online?: boolean
+          is_ready?: boolean
+          joined_at?: string
+          lobby_id: string
+          name: string
+          player_id: string
+        }
+        Update: {
+          avatar?: string
+          id?: string
+          is_host?: boolean
+          is_online?: boolean
+          is_ready?: boolean
+          joined_at?: string
+          lobby_id?: string
+          name?: string
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lobby_players_lobby_id_fkey"
+            columns: ["lobby_id"]
+            isOneToOne: false
+            referencedRelation: "lobbies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

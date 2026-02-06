@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useLobbySync } from '@/hooks/useLobbySync';
 
 export interface Player {
   id: string;
@@ -30,10 +32,10 @@ interface GameContextType {
   currentPlayer: Player | null;
   currentLobby: Lobby | null;
   setCurrentPlayer: (player: Player | null) => void;
-  createLobby: (gameType: Lobby['gameType']) => Lobby;
+  createLobby: (gameType: Lobby['gameType']) => Promise<Lobby>;
   joinLobby: (code: string) => Promise<boolean>;
-  leaveLobby: () => void;
-  setPlayerReady: (ready: boolean) => void;
+  leaveLobby: () => Promise<void>;
+  setPlayerReady: (ready: boolean) => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -52,7 +54,7 @@ const generateCode = (): string => {
   for (let i = 0; i < 6; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return code.toUpperCase();
+  return code;
 };
 
 const generateId = (): string => {
@@ -64,52 +66,17 @@ const generateId = (): string => {
 
 const avatars = [
   '🎮', '🎯', '🎲', '🃏', '🎨', '🏆', '⭐', '🔥', '💎', '🌟',
-  '🦊', '🐺', '🦁', '🐯', '🐻', '🐼', '🐨', '🐸', '🐙', '🦄'
+  '🦊', '🐺', '🦁', '🐯', '🐻', '🐼', '🐨', '🐸', '🐙', '🦄',
 ];
-
-const LOBBIES_STORAGE_KEY = 'playq-lobbies';
-
-// Helper to get all lobbies
-const getStoredLobbies = (): Record<string, Lobby> => {
-  try {
-    const stored = localStorage.getItem(LOBBIES_STORAGE_KEY);
-    if (!stored) return {};
-    const parsed = JSON.parse(stored);
-    return (parsed && typeof parsed === 'object') ? parsed : {};
-  } catch (error) {
-    console.error('Error reading lobbies from localStorage:', error);
-    return {};
-  }
-};
-
-// Helper to save a lobby
-const saveLobbyToStore = (lobby: Lobby) => {
-  try {
-    const lobbies = getStoredLobbies();
-    const normalizedCode = lobby.code.replace(/\s/g, '').toUpperCase();
-    lobbies[normalizedCode] = {
-      ...lobby,
-      code: normalizedCode
-    };
-    localStorage.setItem(LOBBIES_STORAGE_KEY, JSON.stringify(lobbies));
-    // Dispatch a storage event manually for the current tab
-    window.dispatchEvent(new Event('storage-update'));
-  } catch (error) {
-    console.error('Error saving lobby to localStorage:', error);
-  }
-};
 
 interface GameProviderProps {
   children: ReactNode;
 }
 
 export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
-  const [currentPlayer, setCurrentPlayer] = useState<Player | null>(() => {
+  const [currentPlayer, setCurrentPlayerState] = useState<Player | null>(() => {
     const stored = localStorage.getItem('playq-player');
-    if (stored) {
-      return JSON.parse(stored);
-    }
-    // Create default player
+    if (stored) return JSON.parse(stored);
     const player: Player = {
       id: generateId(),
       name: `Player${Math.floor(Math.random() * 9999)}`,
@@ -123,179 +90,220 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   });
 
   const [currentLobby, setCurrentLobby] = useState<Lobby | null>(null);
+  const [activeLobbyCode, setActiveLobbyCode] = useState<string | null>(null);
 
-  // Rehydrate lobby from URL if needed
+  // Realtime lobby sync
+  const handleLobbyUpdate = useCallback((lobby: Lobby | null) => {
+    setCurrentLobby(lobby);
+  }, []);
+
+  useLobbySync({ lobbyCode: activeLobbyCode, onLobbyUpdate: handleLobbyUpdate });
+
+  // Rehydrate lobby from URL on mount
   React.useEffect(() => {
     const path = window.location.pathname;
-    const lobbyMatch = path.match(/\/lobby\/([a-zA-Z0-9]{6})/);
-    if (lobbyMatch && !currentLobby) {
-      const code = lobbyMatch[1].toUpperCase();
-      const lobbies = getStoredLobbies();
-      const lobby = lobbies[code];
-      if (lobby) {
-        setCurrentLobby(lobby);
-      }
+    const match = path.match(/\/lobby\/([a-zA-Z0-9]{6})/);
+    if (match && !activeLobbyCode) {
+      setActiveLobbyCode(match[1].toUpperCase());
     }
-  }, [currentLobby]);
+  }, [activeLobbyCode]);
 
-  // Sync with localStorage
-  React.useEffect(() => {
-    const syncLobby = () => {
-      if (currentLobby) {
-        const lobbies = getStoredLobbies();
-        const updatedLobby = lobbies[currentLobby.code];
-        if (updatedLobby && JSON.stringify(updatedLobby) !== JSON.stringify(currentLobby)) {
-          setCurrentLobby(updatedLobby);
-        }
-      }
-    };
+  const updateCurrentPlayer = useCallback((player: Player | null) => {
+    setCurrentPlayerState(player);
+    if (player) {
+      localStorage.setItem('playq-player', JSON.stringify(player));
+    } else {
+      localStorage.removeItem('playq-player');
+    }
+  }, []);
 
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === LOBBIES_STORAGE_KEY) {
-        syncLobby();
-      }
-    };
-
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener('storage-update', syncLobby);
-
-    // Polling as a fallback for some environments or single-tab testing if needed
-    const interval = setInterval(syncLobby, 2000);
-
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('storage-update', syncLobby);
-      clearInterval(interval);
-    };
-  }, [currentLobby]);
-
-  const createLobby = (gameType: Lobby['gameType']): Lobby => {
+  const createLobby = useCallback(async (gameType: Lobby['gameType']): Promise<Lobby> => {
     if (!currentPlayer) throw new Error('No player set');
 
-    const maxPlayersMap = {
+    const maxPlayersMap: Record<string, number> = {
       uno: 10,
       ludo: 4,
       pictionary: 8,
       dominoes: 4,
     };
 
+    const code = generateCode();
+
+    // Insert the lobby row
+    const { data: lobbyRow, error: lobbyErr } = await supabase
+      .from('lobbies')
+      .insert({
+        code,
+        game_type: gameType,
+        status: 'waiting',
+        max_players: maxPlayersMap[gameType] || 4,
+        time_limit: gameType === 'pictionary' ? 60 : null,
+        house_rules: {},
+      })
+      .select()
+      .single();
+
+    if (lobbyErr || !lobbyRow) {
+      console.error('Error creating lobby:', lobbyErr);
+      throw new Error('Failed to create lobby');
+    }
+
+    // Insert the host player
     const hostPlayer: Player = { ...currentPlayer, isHost: true, isReady: true };
-    
+    const { error: playerErr } = await supabase
+      .from('lobby_players')
+      .insert({
+        lobby_id: lobbyRow.id,
+        player_id: hostPlayer.id,
+        name: hostPlayer.name,
+        avatar: hostPlayer.avatar,
+        is_host: true,
+        is_ready: true,
+        is_online: true,
+      });
+
+    if (playerErr) {
+      console.error('Error adding host player:', playerErr);
+      throw new Error('Failed to add host to lobby');
+    }
+
+    updateCurrentPlayer(hostPlayer);
+    setActiveLobbyCode(code);
+
+    // Return a constructed Lobby object immediately
     const lobby: Lobby = {
-      id: generateId(),
-      code: generateCode(),
+      id: lobbyRow.id,
+      code,
       gameType,
       host: hostPlayer,
       players: [hostPlayer],
       settings: {
-        maxPlayers: maxPlayersMap[gameType],
+        maxPlayers: maxPlayersMap[gameType] || 4,
         timeLimit: gameType === 'pictionary' ? 60 : undefined,
         houseRules: {},
       },
       status: 'waiting',
-      createdAt: new Date(),
+      createdAt: new Date(lobbyRow.created_at),
     };
-
-    saveLobbyToStore(lobby);
     setCurrentLobby(lobby);
-    setCurrentPlayer(hostPlayer);
     return lobby;
-  };
+  }, [currentPlayer, updateCurrentPlayer]);
 
-  const joinLobby = async (code: string): Promise<boolean> => {
+  const joinLobby = useCallback(async (code: string): Promise<boolean> => {
     if (!currentPlayer) throw new Error('No player set');
 
     const normalizedCode = code.replace(/\s/g, '').toUpperCase();
-    console.log('Attempting to join lobby:', normalizedCode);
-    
-    // Simulate a brief network delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const lobbies = getStoredLobbies();
-    const lobby = lobbies[normalizedCode];
 
-    if (!lobby) {
-      return false;
-    }
+    // Fetch the lobby from the database
+    const { data: lobbyRow, error: lobbyErr } = await supabase
+      .from('lobbies')
+      .select('*')
+      .eq('code', normalizedCode)
+      .maybeSingle();
 
-    // Prevent joining a game already in progress
-    if (lobby.status !== 'waiting') {
+    if (lobbyErr || !lobbyRow) return false;
+
+    if (lobbyRow.status !== 'waiting') {
       throw new Error('This game has already started');
     }
 
-    // Check if player is already in lobby
-    const isAlreadyIn = lobby.players.find(p => p.id === currentPlayer.id);
+    // Check existing players
+    const { data: existingPlayers, error: playersErr } = await supabase
+      .from('lobby_players')
+      .select('*')
+      .eq('lobby_id', lobbyRow.id);
 
-    if (!isAlreadyIn) {
-      if (lobby.players.length >= lobby.settings.maxPlayers) {
+    if (playersErr) throw new Error('Failed to check lobby');
+
+    const alreadyIn = (existingPlayers || []).find(
+      (p) => p.player_id === currentPlayer.id
+    );
+
+    if (!alreadyIn) {
+      if ((existingPlayers || []).length >= lobbyRow.max_players) {
         throw new Error('Lobby is full');
       }
 
-      const updatedPlayer = { ...currentPlayer, isHost: false, isReady: false };
-      lobby.players.push(updatedPlayer);
-      saveLobbyToStore(lobby);
-      setCurrentPlayer(updatedPlayer);
-      localStorage.setItem('playq-player', JSON.stringify(updatedPlayer));
-    }
+      const joiningPlayer: Player = { ...currentPlayer, isHost: false, isReady: false };
+      const { error: insertErr } = await supabase
+        .from('lobby_players')
+        .insert({
+          lobby_id: lobbyRow.id,
+          player_id: joiningPlayer.id,
+          name: joiningPlayer.name,
+          avatar: joiningPlayer.avatar,
+          is_host: false,
+          is_ready: false,
+          is_online: true,
+        });
 
-    setCurrentLobby(lobby);
-    return true;
-  };
-
-  const leaveLobby = () => {
-    if (currentPlayer && currentLobby) {
-      // Remove player from the stored lobby so others see the update
-      const updatedPlayers = currentLobby.players.filter(p => p.id !== currentPlayer.id);
-      
-      if (updatedPlayers.length > 0) {
-        // If host is leaving, assign a new host
-        const needsNewHost = currentPlayer.isHost;
-        if (needsNewHost) {
-          updatedPlayers[0] = { ...updatedPlayers[0], isHost: true, isReady: true };
-        }
-        const updatedLobby = { ...currentLobby, players: updatedPlayers, host: needsNewHost ? updatedPlayers[0] : currentLobby.host };
-        saveLobbyToStore(updatedLobby);
-      } else {
-        // Last player leaving — remove lobby from storage
-        try {
-          const lobbies = getStoredLobbies();
-          delete lobbies[currentLobby.code];
-          localStorage.setItem(LOBBIES_STORAGE_KEY, JSON.stringify(lobbies));
-          window.dispatchEvent(new Event('storage-update'));
-        } catch (e) {
-          console.error('Error removing lobby:', e);
-        }
+      if (insertErr) {
+        console.error('Error joining lobby:', insertErr);
+        throw new Error('Failed to join lobby');
       }
 
-      const resetPlayer = { ...currentPlayer, isHost: false, isReady: false };
-      setCurrentPlayer(resetPlayer);
-      localStorage.setItem('playq-player', JSON.stringify(resetPlayer));
+      updateCurrentPlayer(joiningPlayer);
     }
-    setCurrentLobby(null);
-  };
 
-  const setPlayerReady = (ready: boolean) => {
+    setActiveLobbyCode(normalizedCode);
+    return true;
+  }, [currentPlayer, updateCurrentPlayer]);
+
+  const leaveLobby = useCallback(async () => {
+    if (!currentPlayer || !currentLobby) {
+      setCurrentLobby(null);
+      setActiveLobbyCode(null);
+      return;
+    }
+
+    // Remove the player from the lobby
+    await supabase
+      .from('lobby_players')
+      .delete()
+      .eq('lobby_id', currentLobby.id)
+      .eq('player_id', currentPlayer.id);
+
+    // Check remaining players
+    const { data: remaining } = await supabase
+      .from('lobby_players')
+      .select('*')
+      .eq('lobby_id', currentLobby.id);
+
+    if (!remaining || remaining.length === 0) {
+      // Delete the empty lobby
+      await supabase.from('lobbies').delete().eq('id', currentLobby.id);
+    } else if (currentPlayer.isHost) {
+      // Assign new host to the first remaining player
+      const newHost = remaining[0];
+      await supabase
+        .from('lobby_players')
+        .update({ is_host: true, is_ready: true })
+        .eq('id', newHost.id);
+    }
+
+    updateCurrentPlayer({ ...currentPlayer, isHost: false, isReady: false });
+    setCurrentLobby(null);
+    setActiveLobbyCode(null);
+  }, [currentPlayer, currentLobby, updateCurrentPlayer]);
+
+  const setPlayerReady = useCallback(async (ready: boolean) => {
     if (!currentPlayer || !currentLobby) return;
 
-    const updatedPlayer = { ...currentPlayer, isReady: ready };
-    setCurrentPlayer(updatedPlayer);
+    const { error } = await supabase
+      .from('lobby_players')
+      .update({ is_ready: ready })
+      .eq('lobby_id', currentLobby.id)
+      .eq('player_id', currentPlayer.id);
 
-    const updatedPlayers = currentLobby.players.map(p =>
-      p.id === currentPlayer.id ? updatedPlayer : p
-    );
-    const updatedLobby = { ...currentLobby, players: updatedPlayers };
-    setCurrentLobby(updatedLobby);
-    saveLobbyToStore(updatedLobby);
-  };
-
-  const updateCurrentPlayer = (player: Player | null) => {
-    setCurrentPlayer(player);
-    if (player) {
-      localStorage.setItem('playq-player', JSON.stringify(player));
-    } else {
-      localStorage.removeItem('playq-player');
+    if (error) {
+      console.error('Error setting ready state:', error);
+      return;
     }
-  };
+
+    // Optimistic update
+    const updatedPlayer = { ...currentPlayer, isReady: ready };
+    updateCurrentPlayer(updatedPlayer);
+  }, [currentPlayer, currentLobby, updateCurrentPlayer]);
 
   return (
     <GameContext.Provider
