@@ -27,8 +27,8 @@ import { canPlayTile } from '@/lib/dominoes';
 const DominoesGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { currentLobby, currentPlayer } = useGame();
-  const { participants: voiceParticipants, resumeAudio, connect: connectVoice } = useVoice();
+  const { currentLobby, currentPlayer, leaveLobby } = useGame();
+  const { participants: voiceParticipants, resumeAudio, connect: connectVoice, disconnect: disconnectVoice } = useVoice();
   const {
     gameState,
     playTile,
@@ -37,6 +37,12 @@ const DominoesGame: React.FC = () => {
     startGame,
     resetGame
   } = useDominoes();
+
+  const handleLeave = () => {
+    disconnectVoice();
+    leaveLobby();
+    navigate('/');
+  };
 
   // Auto-connect to voice
   useEffect(() => {
@@ -117,8 +123,8 @@ const DominoesGame: React.FC = () => {
               Start Game
             </GamingButton>
           )}
-          <Button variant="ghost" className="mt-4 text-white" onClick={() => navigate(`/lobby/${code}`)}>
-            Back to Lobby
+          <Button variant="ghost" className="mt-4 text-white" onClick={handleLeave}>
+            Leave Lobby
           </Button>
         </motion.div>
       </div>
@@ -135,9 +141,9 @@ const DominoesGame: React.FC = () => {
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => navigate(`/lobby/${code}`)} className="text-white hover:bg-white/10">
+          <Button variant="ghost" onClick={handleLeave} className="text-white hover:bg-white/10">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Lobby
+            Leave
           </Button>
           <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10">
             <span className="text-xs font-bold uppercase tracking-widest text-white/60">
@@ -408,6 +414,13 @@ const DominoesGame: React.FC = () => {
                 >
                   Return to Lobby
                 </GamingButton>
+                <Button
+                    variant="ghost"
+                    className="w-full text-white"
+                    onClick={handleLeave}
+                >
+                    Back to Home
+                </Button>
               </div>
             </motion.div>
           </motion.div>

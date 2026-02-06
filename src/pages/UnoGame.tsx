@@ -27,8 +27,8 @@ import { cn } from '@/lib/utils';
 const UnoGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { currentLobby, currentPlayer } = useGame();
-  const { participants: voiceParticipants, resumeAudio, connect: connectVoice } = useVoice();
+  const { currentLobby, currentPlayer, leaveLobby } = useGame();
+  const { participants: voiceParticipants, resumeAudio, connect: connectVoice, disconnect: disconnectVoice } = useVoice();
   const {
     gameState,
     playCard,
@@ -42,6 +42,12 @@ const UnoGame: React.FC = () => {
 
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [selectedWildCardId, setSelectedWildCardId] = useState<string | null>(null);
+
+  const handleLeave = () => {
+    disconnectVoice();
+    leaveLobby();
+    navigate('/');
+  };
 
   useEffect(() => {
     if (!gameState && currentPlayer?.isHost && currentLobby) {
@@ -114,8 +120,8 @@ const UnoGame: React.FC = () => {
                 Start Game
             </GamingButton>
           )}
-          <Button variant="ghost" className="mt-4" onClick={() => navigate(`/lobby/${code}`)}>
-              Back to Lobby
+          <Button variant="ghost" className="mt-4" onClick={handleLeave}>
+              Leave Lobby
           </Button>
         </motion.div>
       </div>
@@ -141,9 +147,9 @@ const UnoGame: React.FC = () => {
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate(`/lobby/${code}`)}>
+            <Button variant="ghost" onClick={handleLeave}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Lobby
+                Leave
             </Button>
             <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10">
                 <div className={cn(
@@ -392,7 +398,7 @@ const UnoGame: React.FC = () => {
                         <Button
                             variant="ghost"
                             className="w-full"
-                            onClick={() => navigate('/')}
+                            onClick={handleLeave}
                         >
                             Back to Home
                         </Button>

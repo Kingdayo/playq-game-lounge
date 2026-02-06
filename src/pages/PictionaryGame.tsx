@@ -163,8 +163,8 @@ const PictionaryCanvas: React.FC<{
 const PictionaryGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { currentLobby, currentPlayer } = useGame();
-  const { participants: voiceParticipants, resumeAudio, connect: connectVoice } = useVoice();
+  const { currentLobby, currentPlayer, leaveLobby } = useGame();
+  const { participants: voiceParticipants, resumeAudio, connect: connectVoice, disconnect: disconnectVoice } = useVoice();
   const {
     gameState,
     drawStroke,
@@ -174,6 +174,12 @@ const PictionaryGame: React.FC = () => {
     undoStroke,
     resetGame
   } = usePictionary();
+
+  const handleLeave = () => {
+    disconnectVoice();
+    leaveLobby();
+    navigate('/');
+  };
 
   // Auto-connect to voice
   useEffect(() => {
@@ -229,7 +235,7 @@ const PictionaryGame: React.FC = () => {
       {/* Header */}
       <div className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/lobby/${code}`)}>
+          <Button variant="ghost" size="icon" onClick={handleLeave}>
             <LogOut className="w-5 h-5" />
           </Button>
           <div>
@@ -357,6 +363,13 @@ const PictionaryGame: React.FC = () => {
                         <GamingButton variant="primary" size="lg" className="w-full h-14" onClick={resetGame}>
                             Return to Lobby
                         </GamingButton>
+                        <Button
+                            variant="ghost"
+                            className="w-full mt-4"
+                            onClick={handleLeave}
+                        >
+                            Back to Home
+                        </Button>
                       </motion.div>
                     )}
                   </div>
