@@ -22,16 +22,18 @@ import { useGame } from '@/contexts/GameContext';
 import { useChat } from '@/contexts/ChatContext';
 import { useUno } from '@/contexts/UnoContext';
 import { useLudo } from '@/contexts/LudoContext';
+import { useDominoes } from '@/contexts/DominoesContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 const Lobby: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { currentLobby, currentPlayer, setPlayerReady, leaveLobby, startGame: startLobbyGame } = useGame();
+  const { currentLobby, currentPlayer, setPlayerReady, leaveLobby, updateLobbySettings, startGame: startLobbyGame } = useGame();
   const { sendMessage, roomMessages, createLobbyRoom } = useChat();
   const { startGame: startUnoGame } = useUno();
   const { startGame: startLudoGame } = useLudo();
+  const { startGame: startDominoesGame } = useDominoes();
   
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,6 +91,8 @@ const Lobby: React.FC = () => {
         startUnoGame();
       } else if (currentLobby.gameType === 'ludo') {
         startLudoGame();
+      } else if (currentLobby.gameType === 'dominoes') {
+        startDominoesGame();
       }
       await startLobbyGame();
     } catch (error) {
@@ -377,6 +381,59 @@ const Lobby: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {/* Dominoes Settings */}
+            {currentLobby.gameType === 'dominoes' && (
+              <div className="glass-card rounded-xl p-4">
+                <h3 className="font-display text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+                  <SettingsIcon className="w-4 h-4" />
+                  Dominoes Rules
+                </h3>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground uppercase">Variant</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant={currentLobby.settings.houseRules?.variant !== 'block' ? 'primary' : 'outline'}
+                        size="sm"
+                        className="text-xs h-8"
+                        onClick={() => updateLobbySettings({ houseRules: { ...currentLobby.settings.houseRules, variant: 'draw' } })}
+                        disabled={!currentPlayer?.isHost}
+                      >
+                        Draw
+                      </Button>
+                      <Button
+                        variant={currentLobby.settings.houseRules?.variant === 'block' ? 'primary' : 'outline'}
+                        size="sm"
+                        className="text-xs h-8"
+                        onClick={() => updateLobbySettings({ houseRules: { ...currentLobby.settings.houseRules, variant: 'block' } })}
+                        disabled={!currentPlayer?.isHost}
+                      >
+                        Block
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground uppercase">Set Size</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[6, 9, 12].map((size) => (
+                        <Button
+                          key={size}
+                          variant={(currentLobby.settings.houseRules?.setSize || 6) === size ? 'primary' : 'outline'}
+                          size="sm"
+                          className="text-xs h-8"
+                          onClick={() => updateLobbySettings({ houseRules: { ...currentLobby.settings.houseRules, setSize: size } })}
+                          disabled={!currentPlayer?.isHost}
+                        >
+                          D-{size}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.div>
         </div>
       </motion.div>
