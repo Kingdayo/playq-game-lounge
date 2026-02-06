@@ -283,9 +283,22 @@ const getNextActivePlayerIndex = (gameState: LudoGameState): number => {
 
 export const skipTurn = (gameState: LudoGameState): LudoGameState => {
     const newState = { ...gameState };
-    newState.diceValue = null;
-    newState.extraRolls = 0;
-    newState.currentPlayerIndex = getNextActivePlayerIndex(newState);
-    newState.lastActionMessage = `${gameState.players[gameState.currentPlayerIndex].name} had no legal moves and skipped turn.`;
+    const playerWhoSkipped = gameState.players[gameState.currentPlayerIndex];
+
+    // If they rolled a 6, they might have extra rolls
+    if (newState.diceValue === 6) {
+        newState.extraRolls += 1;
+    }
+
+    if (newState.extraRolls > 0) {
+        newState.diceValue = null;
+        newState.extraRolls -= 1;
+        newState.lastActionMessage = `${playerWhoSkipped.name} had no moves but gets an extra roll!`;
+    } else {
+        newState.diceValue = null;
+        newState.extraRolls = 0;
+        newState.currentPlayerIndex = getNextActivePlayerIndex(newState);
+        newState.lastActionMessage = `${playerWhoSkipped.name} had no legal moves and skipped turn.`;
+    }
     return newState;
 };
