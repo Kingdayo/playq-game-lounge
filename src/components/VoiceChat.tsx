@@ -1,38 +1,33 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Volume2, VolumeX, Phone, PhoneOff } from 'lucide-react';
+import { Mic, MicOff, Volume2, VolumeX, Phone, PhoneOff, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { useVoice } from '@/contexts/VoiceContext';
+import { useGame } from '@/contexts/GameContext';
 
-interface VoiceUser {
-  id: string;
-  name: string;
-  avatar: string;
-  isSpeaking: boolean;
-  isMuted: boolean;
-}
+const VoiceChat: React.FC = () => {
+  const {
+    isConnected,
+    isConnecting,
+    isMuted,
+    volume,
+    participants,
+    connect,
+    disconnect,
+    toggleMute,
+    setVolume,
+    error
+  } = useVoice();
 
-interface VoiceChatProps {
-  isConnected: boolean;
-  isMuted: boolean;
-  volume: number;
-  users: VoiceUser[];
-  onConnect: () => void;
-  onDisconnect: () => void;
-  onToggleMute: () => void;
-  onVolumeChange: (volume: number) => void;
-}
+  const { currentLobby, currentPlayer } = useGame();
 
-const VoiceChat: React.FC<VoiceChatProps> = ({
-  isConnected,
-  isMuted,
-  volume,
-  users,
-  onConnect,
-  onDisconnect,
-  onToggleMute,
-  onVolumeChange,
-}) => {
+  const handleConnect = () => {
+    if (currentLobby && currentPlayer) {
+      connect(`voice-lobby-${currentLobby.code}`, currentPlayer);
+    }
+  };
+
   return (
     <div className="glass-card rounded-xl p-4">
       <div className="flex items-center justify-between mb-4">
@@ -46,10 +41,26 @@ const VoiceChat: React.FC<VoiceChatProps> = ({
             <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
             <span className="text-xs text-success">Connected</span>
           </motion.div>
+        ) : isConnecting ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-2"
+          >
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-xs text-primary">Connecting...</span>
+          </motion.div>
         ) : (
           <span className="text-xs text-muted-foreground">Disconnected</span>
         )}
       </div>
+
+      {error && (
+        <div className="mb-4 p-2 rounded bg-destructive/10 border border-destructive/20 flex items-start gap-2 text-xs text-destructive">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* User list */}
       <AnimatePresence mode="popLayout">
@@ -60,7 +71,7 @@ const VoiceChat: React.FC<VoiceChatProps> = ({
             exit={{ opacity: 0, height: 0 }}
             className="space-y-2 mb-4"
           >
-            {users.map((user) => (
+            {participants.map((user) => (
               <motion.div
                 key={user.id}
                 initial={{ opacity: 0, x: -20 }}
@@ -82,7 +93,7 @@ const VoiceChat: React.FC<VoiceChatProps> = ({
                     />
                   )}
                 </div>
-                <span className="text-sm font-medium flex-1">{user.name}</span>
+                <span className="text-sm font-medium flex-1 truncate">{user.name}</span>
                 {user.isMuted && (
                   <MicOff className="w-4 h-4 text-destructive" />
                 )}
@@ -109,7 +120,7 @@ const VoiceChat: React.FC<VoiceChatProps> = ({
               )}
               <Slider
                 value={[volume]}
-                onValueChange={(values) => onVolumeChange(values[0])}
+                onValueChange={(values) => setVolume(values[0])}
                 max={100}
                 step={1}
                 className="flex-1"
@@ -122,7 +133,7 @@ const VoiceChat: React.FC<VoiceChatProps> = ({
             {/* Mute button */}
             <Button
               variant={isMuted ? 'destructive' : 'outline'}
-              onClick={onToggleMute}
+              onClick={toggleMute}
               className="w-full"
             >
               {isMuted ? (
@@ -143,13 +154,19 @@ const VoiceChat: React.FC<VoiceChatProps> = ({
         {/* Connect/Disconnect button */}
         <Button
           variant={isConnected ? 'destructive' : 'default'}
-          onClick={isConnected ? onDisconnect : onConnect}
-          className={`w-full ${!isConnected ? 'btn-gaming' : ''}`}
+          onClick={isConnected ? disconnect : handleConnect}
+          disabled={isConnecting}
+          className={`w-full ${!isConnected && !isConnecting ? 'btn-gaming' : ''}`}
         >
           {isConnected ? (
             <>
               <PhoneOff className="w-4 h-4 mr-2" />
               Leave Voice
+            </>
+          ) : isConnecting ? (
+            <>
+              <Phone className="w-4 h-4 mr-2 animate-pulse" />
+              Connecting...
             </>
           ) : (
             <>

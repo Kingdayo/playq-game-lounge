@@ -20,12 +20,14 @@ import { toast } from '@/components/ui/use-toast';
 import { UnoColor, isPlayable } from '@/lib/uno';
 import Confetti from '@/components/Confetti';
 import PlayerAvatar from '@/components/PlayerAvatar';
+import { useVoice } from '@/contexts/VoiceContext';
 import { cn } from '@/lib/utils';
 
 const UnoGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer } = useGame();
+  const { participants: voiceParticipants } = useVoice();
   const {
     gameState,
     playCard,
@@ -170,6 +172,7 @@ const UnoGame: React.FC = () => {
                         <PlayerAvatar
                             avatar={player.avatar}
                             name={player.name}
+                            isSpeaking={voiceParticipants.some(p => p.name === player.name && p.isSpeaking)}
                             size="md"
                         />
                         {gameState.currentPlayerIndex === gameState.players.findIndex(p => p.id === player.id) && (

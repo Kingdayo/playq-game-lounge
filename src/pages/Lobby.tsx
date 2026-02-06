@@ -20,6 +20,7 @@ import VoiceChat from '@/components/VoiceChat';
 import ChatPanel from '@/components/ChatPanel';
 import { useGame } from '@/contexts/GameContext';
 import { useChat } from '@/contexts/ChatContext';
+import { useVoice } from '@/contexts/VoiceContext';
 import { useUno } from '@/contexts/UnoContext';
 import { useLudo } from '@/contexts/LudoContext';
 import { useDominoes } from '@/contexts/DominoesContext';
@@ -32,6 +33,7 @@ const Lobby: React.FC = () => {
   const navigate = useNavigate();
   const { currentLobby, currentPlayer, setPlayerReady, leaveLobby, updateLobbySettings, startGame: startLobbyGame } = useGame();
   const { sendMessage, roomMessages, createLobbyRoom } = useChat();
+  const { connect: connectVoice, disconnect: disconnectVoice, participants: voiceParticipants } = useVoice();
   const { startGame: startUnoGame } = useUno();
   const { startGame: startLudoGame } = useLudo();
   const { startGame: startDominoesGame } = useDominoes();
@@ -40,9 +42,6 @@ const Lobby: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showChat, setShowChat] = useState(false);
-  const [voiceConnected, setVoiceConnected] = useState(false);
-  const [voiceMuted, setVoiceMuted] = useState(false);
-  const [voiceVolume, setVoiceVolume] = useState(75);
 
   const roomId = code ? `lobby-${code}` : '';
   const messages = roomId ? roomMessages[roomId] || [] : [];
@@ -58,6 +57,19 @@ const Lobby: React.FC = () => {
       createLobbyRoom(code);
     }
   }, [code, createLobbyRoom]);
+
+  // Auto-connect to voice
+  useEffect(() => {
+    if (code && currentPlayer && currentLobby) {
+      connectVoice(`voice-lobby-${code}`, currentPlayer);
+    }
+    return () => {
+      // We don't necessarily want to disconnect here if we are transitioning to a game
+      // But the requirement says "Clean up voice channels when lobbies are closed"
+      // Actually, if we leave the lobby (navigate away), we should probably disconnect
+      // UNLESS we are going to a game page with the same code.
+    };
+  }, [code, currentPlayer, currentLobby, connectVoice]);
 
   // Handle game start synchronization
   useEffect(() => {
@@ -105,6 +117,7 @@ const Lobby: React.FC = () => {
   };
 
   const handleLeaveLobby = () => {
+    disconnectVoice();
     leaveLobby();
     navigate('/');
   };
@@ -275,6 +288,7 @@ const Lobby: React.FC = () => {
                       name={player.name}
                       isReady={player.isReady}
                       isHost={player.isHost}
+                      isSpeaking={voiceParticipants.some(p => p.name === player.name && p.isSpeaking)}
                       size="lg"
                     />
                   </motion.div>
@@ -349,22 +363,7 @@ const Lobby: React.FC = () => {
             className="space-y-6"
           >
             {/* Voice Chat */}
-            <VoiceChat
-              isConnected={voiceConnected}
-              isMuted={voiceMuted}
-              volume={voiceVolume}
-              users={currentLobby.players.map((p) => ({
-                id: p.id,
-                name: p.name,
-                avatar: p.avatar,
-                isSpeaking: false,
-                isMuted: p.id === currentPlayer?.id ? voiceMuted : false,
-              }))}
-              onConnect={() => setVoiceConnected(true)}
-              onDisconnect={() => setVoiceConnected(false)}
-              onToggleMute={() => setVoiceMuted(!voiceMuted)}
-              onVolumeChange={setVoiceVolume}
-            />
+            <VoiceChat />
 
             {/* Game Settings */}
             <div className="glass-card rounded-xl p-4">

@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { GameProvider } from "@/contexts/GameContext";
 import { LoadingProvider } from "@/contexts/LoadingContext";
 import { ChatProvider } from "@/contexts/ChatContext";
+import { VoiceProvider } from "@/contexts/VoiceContext";
 import { UnoProvider } from "@/contexts/UnoContext";
 import { LudoProvider } from "@/contexts/LudoContext";
 import { DominoesProvider } from "@/contexts/DominoesContext";
@@ -35,6 +36,7 @@ const App = () => (
               <DominoesProvider>
                 <PictionaryProvider>
                   <ChatProvider>
+                  <VoiceProvider>
                   <TooltipProvider>
                     <Toaster />
                     <Sonner />
@@ -55,6 +57,7 @@ const App = () => (
                       </Routes>
                     </BrowserRouter>
                   </TooltipProvider>
+                  </VoiceProvider>
                 </ChatProvider>
                 </PictionaryProvider>
               </DominoesProvider>

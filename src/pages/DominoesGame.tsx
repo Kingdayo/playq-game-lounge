@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import Confetti from '@/components/Confetti';
 import PlayerAvatar from '@/components/PlayerAvatar';
+import { useVoice } from '@/contexts/VoiceContext';
 import { cn } from '@/lib/utils';
 import { canPlayTile } from '@/lib/dominoes';
 
@@ -26,6 +27,7 @@ const DominoesGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer } = useGame();
+  const { participants: voiceParticipants } = useVoice();
   const {
     gameState,
     playTile,
@@ -156,7 +158,12 @@ const DominoesGame: React.FC = () => {
                 gameState.currentPlayerIndex === gameState.players.findIndex(p => p.id === player.id) && "bg-primary/10 ring-1 ring-primary/50"
               )}
             >
-              <PlayerAvatar avatar={player.avatar} name={player.name} size="sm" />
+              <PlayerAvatar
+                avatar={player.avatar}
+                name={player.name}
+                isSpeaking={voiceParticipants.some(vp => vp.name === player.name && vp.isSpeaking)}
+                size="sm"
+              />
               <div className="absolute -top-1 -right-1 bg-zinc-900 border border-white/20 rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white">
                 {player.hand.length}
               </div>
@@ -226,7 +233,13 @@ const DominoesGame: React.FC = () => {
         <div className="glass-card rounded-3xl p-6 bg-zinc-900/50">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <PlayerAvatar avatar={myPlayer?.avatar || ''} name={myPlayer?.name || ''} size="sm" isReady />
+              <PlayerAvatar
+                avatar={myPlayer?.avatar || ''}
+                name={myPlayer?.name || ''}
+                isSpeaking={voiceParticipants.some(vp => vp.name === myPlayer?.name && vp.isSpeaking)}
+                size="sm"
+                isReady
+              />
               <div>
                 <p className="text-sm font-bold text-white">{myPlayer?.name}</p>
                 <p className="text-[10px] text-primary uppercase font-black tracking-tighter">Your Hand</p>

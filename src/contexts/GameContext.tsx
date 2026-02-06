@@ -36,6 +36,7 @@ interface GameContextType {
   joinLobby: (code: string) => Promise<boolean>;
   leaveLobby: () => Promise<void>;
   setPlayerReady: (ready: boolean) => Promise<void>;
+  updateLobbySettings: (settings: Partial<GameSettings>) => Promise<void>;
   startGame: () => Promise<void>;
 }
 
@@ -334,6 +335,26 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     updateCurrentPlayer(updatedPlayer);
   }, [currentPlayer, currentLobby, updateCurrentPlayer]);
 
+  const updateLobbySettings = useCallback(async (settings: Partial<GameSettings>) => {
+    if (!currentLobby) return;
+
+    const updatedSettings = { ...currentLobby.settings, ...settings };
+
+    const { error } = await supabase
+      .from('lobbies')
+      .update({
+        max_players: updatedSettings.maxPlayers,
+        time_limit: updatedSettings.timeLimit,
+        house_rules: updatedSettings.houseRules,
+      })
+      .eq('id', currentLobby.id);
+
+    if (error) {
+      console.error('Error updating lobby settings:', error);
+      throw error;
+    }
+  }, [currentLobby]);
+
   const startGame = useCallback(async () => {
     if (!currentLobby || !currentPlayer?.isHost) return;
 
@@ -358,6 +379,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         joinLobby,
         leaveLobby,
         setPlayerReady,
+        updateLobbySettings,
         startGame,
       }}
     >
