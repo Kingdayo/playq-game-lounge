@@ -3,6 +3,9 @@ import Peer, { MediaConnection } from 'peerjs';
 import { useGame } from './GameContext';
 import { Player, VoiceParticipant } from '@/types/game';
 
+const PEER_PREFIX = 'playq_voice';
+const DELIMITER = ':::';
+
 interface VoiceContextType {
   isConnected: boolean;
   isConnecting: boolean;
@@ -34,10 +37,22 @@ function AudioElement({ stream, volume }: { stream: MediaStream, volume: number 
     if (audioRef.current) {
       audioRef.current.srcObject = stream;
       audioRef.current.volume = volume / 100;
+
+      // Fix for some mobile browsers requiring user interaction to play
+      const playAudio = async () => {
+        try {
+          if (audioRef.current) {
+            await audioRef.current.play();
+          }
+        } catch (e) {
+          console.error('Autoplay failed:', e);
+        }
+      };
+      playAudio();
     }
   }, [stream, volume]);
 
-  return <audio ref={audioRef} autoPlay />;
+  return <audio ref={audioRef} autoPlay playsInline />;
 }
 
 function RemoteAudioStreams({ participants, localId, volume }: { participants: VoiceParticipant[], localId?: string, volume: number }) {
@@ -84,7 +99,7 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     if (!currentLobby) return;
 
     const list: VoiceParticipant[] = currentLobby.players.map(player => {
-      const isLocal = player.id === peerRef.current?.id.split('-').pop();
+      const isLocal = player.id === peerRef.current?.id.split(DELIMITER).pop();
       return {
         id: player.id,
         name: player.name,
@@ -144,13 +159,22 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     updateParticipantsListRef.current = updateParticipantsList;
   });
 
-  const connectToPeer = useCallback((remotePeerId: string, playerId: string) => {
+  const connectToPeer = useCallback((remotePeerId: string, playerId: string, retryCount = 0) => {
     if (!peerRef.current || !localStreamRef.current || connectionsRef.current[playerId]) return;
 
-    console.log(`Calling peer: ${remotePeerId}`);
+    console.log(`Calling peer: ${remotePeerId} (Attempt ${retryCount + 1})`);
     const call = peerRef.current.call(remotePeerId, localStreamRef.current);
 
+    // Add a timeout for the call establishment
+    const callTimeout = setTimeout(() => {
+        if (!remoteStreamsRef.current[playerId]) {
+            console.log(`Call to ${playerId} timed out.`);
+            call.close();
+        }
+    }, 10000);
+
     call.on('stream', (remoteStream) => {
+        clearTimeout(callTimeout);
       console.log(`Received stream from: ${playerId}`);
       remoteStreamsRef.current[playerId] = remoteStream;
       setupAudioAnalysis(remoteStream, playerId);
@@ -158,10 +182,21 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     });
 
     call.on('close', () => {
+      clearTimeout(callTimeout);
       delete connectionsRef.current[playerId];
       delete remoteStreamsRef.current[playerId];
       delete analysersRef.current[playerId];
       updateParticipantsListRef.current();
+    });
+
+    call.on('error', (err) => {
+        clearTimeout(callTimeout);
+        console.error(`Call error with ${playerId}:`, err);
+        if (err.type === 'peer-unavailable' && retryCount < 3) {
+            console.log(`Peer ${playerId} unavailable, retrying in 3s...`);
+            setTimeout(() => connectToPeer(remotePeerId, playerId, retryCount + 1), 3000);
+        }
+        delete connectionsRef.current[playerId];
     });
 
     connectionsRef.current[playerId] = call;
@@ -174,13 +209,29 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     setError(null);
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Request permissions explicitly for mobile/safari
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+
       setLocalStream(stream);
       localStreamRef.current = stream;
       setupAudioAnalysis(stream, player.id);
 
-      const newPeer = new Peer(`playq-${roomName}-${player.id}`, {
-        debug: 1
+      const peerId = `${PEER_PREFIX}${DELIMITER}${roomName}${DELIMITER}${player.id}`;
+      const newPeer = new Peer(peerId, {
+        debug: 1,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+          ],
+        }
       });
 
       newPeer.on('open', (id) => {
@@ -191,11 +242,16 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
         peerRef.current = newPeer;
       });
 
+      newPeer.on('disconnected', () => {
+        console.log('Peer disconnected from signaling server. Reconnecting...');
+        newPeer.reconnect();
+      });
+
       newPeer.on('call', (call) => {
         console.log('Receiving call from:', call.peer);
         call.answer(localStreamRef.current!);
 
-        const remotePlayerId = call.peer.split('-').pop()!;
+        const remotePlayerId = call.peer.split(DELIMITER).pop()!;
 
         call.on('stream', (remoteStream) => {
           remoteStreamsRef.current[remotePlayerId] = remoteStream;
@@ -221,7 +277,13 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
 
     } catch (err: any) {
       console.error('Failed to get media devices:', err);
-      setError('Could not access microphone');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setError('Microphone access denied. Please enable it in your browser settings.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setError('No microphone found on this device.');
+      } else {
+        setError('Could not access microphone. Please ensure no other app is using it.');
+      }
       setIsConnecting(false);
     }
   }, [isConnecting, setupAudioAnalysis]);
@@ -273,13 +335,16 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     updateParticipantsList();
 
     if (isConnected && peerRef.current && currentLobby) {
-        const localPlayerId = peerRef.current.id.split('-').pop();
-        const roomName = peerRef.current.id.split('-').slice(1, -1).join('-');
+        const parts = peerRef.current.id.split(DELIMITER);
+        const localPlayerId = parts[parts.length - 1];
+        const roomName = parts[1];
 
         currentLobby.players.forEach(p => {
             if (p.id !== localPlayerId && !connectionsRef.current[p.id]) {
+                // To avoid race conditions, lexicographical order determines who calls
                 if (localPlayerId! < p.id) {
-                    connectToPeer(`playq-${roomName}-${p.id}`, p.id);
+                    const remotePeerId = `${PEER_PREFIX}${DELIMITER}${roomName}${DELIMITER}${p.id}`;
+                    connectToPeer(remotePeerId, p.id);
                 }
             }
         });
