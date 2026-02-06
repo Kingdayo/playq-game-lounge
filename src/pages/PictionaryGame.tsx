@@ -177,10 +177,10 @@ const PictionaryGame: React.FC = () => {
 
   // Auto-connect to voice
   useEffect(() => {
-    if (code && currentPlayer && currentLobby) {
+    if (code && currentPlayer) {
       connectVoice(`voice-lobby-${code}`, currentPlayer);
     }
-  }, [code, currentPlayer, currentLobby, connectVoice]);
+  }, [code, currentPlayer?.id, connectVoice]);
 
   const [guessText, setGuessText] = useState('');
   const [brushColor, setBrushColor] = useState(COLORS[0]);
