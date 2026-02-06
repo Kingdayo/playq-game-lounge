@@ -8,6 +8,7 @@ import { GameProvider } from "@/contexts/GameContext";
 import { LoadingProvider } from "@/contexts/LoadingContext";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { UnoProvider } from "@/contexts/UnoContext";
+import { LudoProvider } from "@/contexts/LudoContext";
 import Layout from "@/components/Layout";
 import Index from "./pages/Index";
 import Games from "./pages/Games";
@@ -15,6 +16,7 @@ import Lobby from "./pages/Lobby";
 import Settings from "./pages/Settings";
 import Chat from "./pages/Chat";
 import UnoGame from "./pages/UnoGame";
+import LudoGame from "./pages/LudoGame";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,25 +27,28 @@ const App = () => (
       <LoadingProvider>
         <GameProvider>
           <UnoProvider>
-            <ChatProvider>
-              <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route element={<Layout />}>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/games" element={<Games />} />
-                    <Route path="/lobby/:code" element={<Lobby />} />
-                    <Route path="/game/uno/:code" element={<UnoGame />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/chat" element={<Chat />} />
-                  </Route>
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
-            </ChatProvider>
+            <LudoProvider>
+              <ChatProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <BrowserRouter>
+                    <Routes>
+                      <Route element={<Layout />}>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/games" element={<Games />} />
+                        <Route path="/lobby/:code" element={<Lobby />} />
+                        <Route path="/game/uno/:code" element={<UnoGame />} />
+                        <Route path="/game/ludo/:code" element={<LudoGame />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="/chat" element={<Chat />} />
+                      </Route>
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </BrowserRouter>
+                </TooltipProvider>
+              </ChatProvider>
+            </LudoProvider>
           </UnoProvider>
         </GameProvider>
       </LoadingProvider>

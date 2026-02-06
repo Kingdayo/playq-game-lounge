@@ -175,6 +175,12 @@ export default {
         "wiggle": "wiggle 0.5s ease-in-out infinite",
         "shimmer": "shimmer 1.5s infinite",
       },
+      gridTemplateColumns: {
+        "15": "repeat(15, minmax(0, 1fr))",
+      },
+      gridTemplateRows: {
+        "15": "repeat(15, minmax(0, 1fr))",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

@@ -35,7 +35,8 @@ describe('UNO Logic', () => {
     const gameState = initializeGame('test-lobby', players);
 
     expect(gameState.players.length).toBe(2);
-    expect(gameState.players[0].hand.length).toBe(7);
+    // Might be 7 or 9 if initial discard is Draw 2
+    expect([7, 9]).toContain(gameState.players[0].hand.length);
     expect(gameState.discardPile.length).toBe(1);
     expect(gameState.status).toBe('playing');
   });
