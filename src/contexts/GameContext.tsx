@@ -1,32 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLobbySync } from '@/hooks/useLobbySync';
-
-export interface Player {
-  id: string;
-  name: string;
-  avatar: string;
-  isHost: boolean;
-  isReady: boolean;
-  isOnline: boolean;
-}
-
-export interface GameSettings {
-  maxPlayers: number;
-  timeLimit?: number;
-  houseRules: Record<string, any>;
-}
-
-export interface Lobby {
-  id: string;
-  code: string;
-  gameType: 'uno' | 'ludo' | 'pictionary' | 'dominoes';
-  host: Player;
-  players: Player[];
-  settings: GameSettings;
-  status: 'waiting' | 'starting' | 'in-progress' | 'finished';
-  createdAt: Date;
-}
+import { Player, GameSettings, Lobby } from '@/types/game';
 
 interface GameContextType {
   currentPlayer: Player | null;

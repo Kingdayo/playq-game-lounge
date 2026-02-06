@@ -1,24 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-
-export interface ChatMessage {
-  id: string;
-  sender: string;
-  avatar: string;
-  content: string;
-  timestamp: Date;
-  isSystem?: boolean;
-}
-
-export interface ChatRoom {
-  id: string;
-  name: string;
-  lastMessage?: string;
-  timestamp?: string;
-  unreadCount: number;
-  avatar: string;
-  isGroup: boolean;
-  memberCount?: number;
-}
+import { ChatMessage, ChatRoom } from '@/types/game';
 
 interface ChatContextType {
   rooms: ChatRoom[];

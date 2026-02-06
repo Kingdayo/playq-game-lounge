@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Lobby, Player } from '@/contexts/GameContext';
+import { Lobby, Player } from '@/types/game';
 
 interface UseLobbyParams {
   lobbyCode: string | null;

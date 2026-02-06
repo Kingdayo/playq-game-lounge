@@ -1,15 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import Peer, { MediaConnection } from 'peerjs';
-import { Player, useGame } from './GameContext';
-
-export interface VoiceParticipant {
-  id: string;
-  name: string;
-  avatar: string;
-  isSpeaking: boolean;
-  isMuted: boolean;
-  stream?: MediaStream;
-}
+import { useGame } from './GameContext';
+import { Player, VoiceParticipant } from '@/types/game';
 
 interface VoiceContextType {
   isConnected: boolean;
@@ -33,6 +25,33 @@ export const useVoice = () => {
   }
   return context;
 };
+
+// Hoisted helper components
+function AudioElement({ stream, volume }: { stream: MediaStream, volume: number }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.srcObject = stream;
+      audioRef.current.volume = volume / 100;
+    }
+  }, [stream, volume]);
+
+  return <audio ref={audioRef} autoPlay />;
+}
+
+function RemoteAudioStreams({ participants, localId, volume }: { participants: VoiceParticipant[], localId?: string, volume: number }) {
+  return (
+    <>
+      {participants.map(p => {
+        if (p.id !== localId && p.stream) {
+          return <AudioElement key={p.id} stream={p.stream} volume={volume} />;
+        }
+        return null;
+      })}
+    </>
+  );
+}
 
 interface VoiceProviderProps {
   children: React.ReactNode;
@@ -71,32 +90,12 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
         name: player.name,
         avatar: player.avatar,
         isSpeaking: speakingStates[player.id] || false,
-        isMuted: false, // In P2P we don't easily know if others are muted unless we send data
+        isMuted: false,
         stream: isLocal ? localStreamRef.current || undefined : remoteStreamsRef.current[player.id]
       };
     });
     setParticipants(list);
   }, [currentLobby, speakingStates]);
-
-  useEffect(() => {
-    updateParticipantsList();
-
-    // Auto-connect to new players
-    if (isConnected && peerRef.current && currentLobby) {
-        const localPlayerId = peerRef.current.id.split('-').pop();
-        const roomName = peerRef.current.id.split('-').slice(1, -1).join('-');
-
-        currentLobby.players.forEach(p => {
-            if (p.id !== localPlayerId && !connectionsRef.current[p.id]) {
-                // To avoid race conditions where both peers call each other,
-                // only the peer with the lexicographically "smaller" ID initiates the call.
-                if (localPlayerId! < p.id) {
-                    connectToPeer(`playq-${roomName}-${p.id}`, p.id);
-                }
-            }
-        });
-    }
-  }, [currentLobby, speakingStates, updateParticipantsList, isConnected, connectToPeer]);
 
   const setupAudioAnalysis = useCallback((stream: MediaStream, playerId: string) => {
     try {
@@ -122,7 +121,7 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
           sum += dataArray[i];
         }
         const average = sum / bufferLength;
-        const isSpeaking = average > 20; // Threshold
+        const isSpeaking = average > 20;
 
         setSpeakingStates(prev => {
           if (prev[playerId] === isSpeaking) return prev;
@@ -130,7 +129,7 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
         });
 
         if (peerRef.current) {
-            requestAnimationFrame(checkSpeaking);
+          requestAnimationFrame(checkSpeaking);
         }
       };
 
@@ -139,6 +138,11 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
       console.error('Error setting up audio analysis:', e);
     }
   }, []);
+
+  const updateParticipantsListRef = useRef(updateParticipantsList);
+  useEffect(() => {
+    updateParticipantsListRef.current = updateParticipantsList;
+  });
 
   const connectToPeer = useCallback((remotePeerId: string, playerId: string) => {
     if (!peerRef.current || !localStreamRef.current || connectionsRef.current[playerId]) return;
@@ -150,18 +154,18 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
       console.log(`Received stream from: ${playerId}`);
       remoteStreamsRef.current[playerId] = remoteStream;
       setupAudioAnalysis(remoteStream, playerId);
-      updateParticipantsList();
+      updateParticipantsListRef.current();
     });
 
     call.on('close', () => {
       delete connectionsRef.current[playerId];
       delete remoteStreamsRef.current[playerId];
       delete analysersRef.current[playerId];
-      updateParticipantsList();
+      updateParticipantsListRef.current();
     });
 
     connectionsRef.current[playerId] = call;
-  }, [setupAudioAnalysis, updateParticipantsList]);
+  }, [setupAudioAnalysis]);
 
   const connect = useCallback(async (roomName: string, player: Player) => {
     if (peerRef.current || isConnecting) return;
@@ -185,8 +189,6 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
         setIsConnecting(false);
         setPeer(newPeer);
         peerRef.current = newPeer;
-
-        // Initial connections will be handled by the useEffect watching currentLobby
       });
 
       newPeer.on('call', (call) => {
@@ -198,14 +200,14 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
         call.on('stream', (remoteStream) => {
           remoteStreamsRef.current[remotePlayerId] = remoteStream;
           setupAudioAnalysis(remoteStream, remotePlayerId);
-          updateParticipantsList();
+          updateParticipantsListRef.current();
         });
 
         call.on('close', () => {
           delete connectionsRef.current[remotePlayerId];
           delete remoteStreamsRef.current[remotePlayerId];
           delete analysersRef.current[remotePlayerId];
-          updateParticipantsList();
+          updateParticipantsListRef.current();
         });
 
         connectionsRef.current[remotePlayerId] = call;
@@ -222,7 +224,7 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
       setError('Could not access microphone');
       setIsConnecting(false);
     }
-  }, [isConnecting, currentLobby, connectToPeer, setupAudioAnalysis, updateParticipantsList]);
+  }, [isConnecting, setupAudioAnalysis]);
 
   const disconnect = useCallback(() => {
     if (peerRef.current) {
@@ -236,7 +238,6 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
       setLocalStream(null);
     }
 
-    // Cleanup connections
     Object.values(connectionsRef.current).forEach(conn => conn.close());
     connectionsRef.current = {};
     remoteStreamsRef.current = {};
@@ -260,8 +261,6 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
 
   const setVolume = useCallback((newVolume: number) => {
     setVolumeState(newVolume);
-    // In P2P we'd need to adjust volume on the actual <audio> elements
-    // This state will be used by the UI
   }, []);
 
   useEffect(() => {
@@ -269,6 +268,23 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
       disconnect();
     };
   }, [disconnect]);
+
+  useEffect(() => {
+    updateParticipantsList();
+
+    if (isConnected && peerRef.current && currentLobby) {
+        const localPlayerId = peerRef.current.id.split('-').pop();
+        const roomName = peerRef.current.id.split('-').slice(1, -1).join('-');
+
+        currentLobby.players.forEach(p => {
+            if (p.id !== localPlayerId && !connectionsRef.current[p.id]) {
+                if (localPlayerId! < p.id) {
+                    connectToPeer(`playq-${roomName}-${p.id}`, p.id);
+                }
+            }
+        });
+    }
+  }, [currentLobby, speakingStates, updateParticipantsList, isConnected, connectToPeer]);
 
   return (
     <VoiceContext.Provider
@@ -286,49 +302,9 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
       }}
     >
       {children}
-
-      {/* Hidden audio elements for remote streams */}
       <div className="hidden">
-        {participants.map(p => {
-          if (p.id !== currentLobby?.players.find(pl => pl.name === p.name)?.id && p.stream) {
-              // Only render audio for remote streams
-              // Find if this participant is me
-              const isMe = currentLobby?.players.find(pl => pl.id === p.id)?.name === p.name;
-              // Wait, participant id IS player id now in my mapping
-              // Let's check against local player
-              return null; // We'll handle audio elements in a better way
-          }
-          return null;
-        })}
-        {/* We need to actually play the remote streams */}
         <RemoteAudioStreams participants={participants} localId={peerRef.current?.id.split('-').pop()} volume={volume} />
       </div>
     </VoiceContext.Provider>
   );
-};
-
-const RemoteAudioStreams: React.FC<{ participants: VoiceParticipant[], localId?: string, volume: number }> = ({ participants, localId, volume }) => {
-    return (
-        <>
-            {participants.map(p => {
-                if (p.id !== localId && p.stream) {
-                    return <AudioElement key={p.id} stream={p.stream} volume={volume} />;
-                }
-                return null;
-            })}
-        </>
-    );
-};
-
-const AudioElement: React.FC<{ stream: MediaStream, volume: number }> = ({ stream, volume }) => {
-    const audioRef = useRef<HTMLAudioElement>(null);
-
-    useEffect(() => {
-        if (audioRef.current) {
-            audioRef.current.srcObject = stream;
-            audioRef.current.volume = volume / 100;
-        }
-    }, [stream, volume]);
-
-    return <audio ref={audioRef} autoPlay />;
 };
