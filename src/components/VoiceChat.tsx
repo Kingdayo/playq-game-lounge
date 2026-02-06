@@ -18,6 +18,7 @@ const VoiceChat: React.FC = () => {
     toggleMute,
     setVolume,
     error,
+    permissionDenied,
     resumeAudio
   } = useVoice();
 
@@ -172,6 +173,11 @@ const VoiceChat: React.FC = () => {
             <>
               <Phone className="w-4 h-4 mr-2 animate-pulse" />
               Connecting...
+            </>
+          ) : permissionDenied ? (
+            <>
+              <Phone className="w-4 h-4 mr-2" />
+              Try Re-requesting Permission
             </>
           ) : (
             <>

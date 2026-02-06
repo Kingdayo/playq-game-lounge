@@ -14,6 +14,7 @@ interface VoiceContextType {
   toggleMute: () => void;
   setVolume: (volume: number) => void;
   error: string | null;
+  permissionDenied: boolean;
   resumeAudio: () => Promise<void>;
 }
 
@@ -93,6 +94,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolumeState] = useState(100);
   const [error, setError] = useState<string | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
 
   const [participants, setParticipants] = useState<VoiceParticipant[]>([]);
   const [speakingStates, setSpeakingStates] = useState<Record<string, boolean>>({});
@@ -458,13 +460,15 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         throw new Error('Voice chat requires a secure context (HTTPS).');
       }
 
+      setPermissionDenied(false);
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000,
-          channelCount: 1,
+          echoCancellation: { ideal: true },
+          noiseSuppression: { ideal: true },
+          autoGainControl: { ideal: true },
+          sampleRate: { ideal: 48000 },
+          channelCount: { ideal: 1 },
         }
       });
 
@@ -504,7 +508,21 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (err: any) {
       console.error('Failed to connect to voice:', err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setError('Microphone access denied. Please check your browser settings and try again.');
+          setPermissionDenied(true);
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+          const isChrome = /Chrome/.test(navigator.userAgent);
+
+          let msg = 'Microphone access denied. ';
+          if (isIOS) {
+            msg += 'Please tap the AA icon in Safari address bar and select Website Settings to enable Microphone.';
+          } else if (isChrome) {
+            msg += 'Please tap the Lock icon in Chrome address bar and select Site Settings to enable Microphone.';
+          } else {
+            msg += 'Please check your browser settings and try again.';
+          }
+          setError(msg);
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setError('No microphone found. Please connect a microphone and try again.');
       } else {
           setError(err.message || 'Could not access microphone.');
       }
@@ -595,6 +613,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         toggleMute,
         setVolume,
         error,
+        permissionDenied,
         resumeAudio
       }}
     >
