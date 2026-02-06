@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { useGame } from '@/contexts/GameContext';
-import { useChat, ChatRoom, ChatMessage } from '@/contexts/ChatContext';
+import { useChat } from '@/contexts/ChatContext';
+import { ChatRoom, ChatMessage } from '@/types/game';
 import { cn } from '@/lib/utils';
 
 const Chat: React.FC = () => {
