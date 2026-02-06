@@ -208,37 +208,68 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const normalizedCode = code.replace(/\s/g, '').toUpperCase();
     console.log('Attempting to join lobby:', normalizedCode);
     
-    // Simulate a delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Simulate a brief network delay
+    await new Promise(resolve => setTimeout(resolve, 800));
     
     const lobbies = getStoredLobbies();
     const lobby = lobbies[normalizedCode];
 
-    if (lobby) {
-      // Check if player is already in lobby
-      const isAlreadyIn = lobby.players.find(p => p.id === currentPlayer.id);
-
-      if (!isAlreadyIn) {
-        if (lobby.players.length >= lobby.settings.maxPlayers) {
-          throw new Error('Lobby is full');
-        }
-
-        const updatedPlayer = { ...currentPlayer, isHost: false, isReady: false };
-        lobby.players.push(updatedPlayer);
-        saveLobbyToStore(lobby);
-        setCurrentPlayer(updatedPlayer);
-      }
-
-      setCurrentLobby(lobby);
-      return true;
+    if (!lobby) {
+      return false;
     }
 
-    return false;
+    // Prevent joining a game already in progress
+    if (lobby.status !== 'waiting') {
+      throw new Error('This game has already started');
+    }
+
+    // Check if player is already in lobby
+    const isAlreadyIn = lobby.players.find(p => p.id === currentPlayer.id);
+
+    if (!isAlreadyIn) {
+      if (lobby.players.length >= lobby.settings.maxPlayers) {
+        throw new Error('Lobby is full');
+      }
+
+      const updatedPlayer = { ...currentPlayer, isHost: false, isReady: false };
+      lobby.players.push(updatedPlayer);
+      saveLobbyToStore(lobby);
+      setCurrentPlayer(updatedPlayer);
+      localStorage.setItem('playq-player', JSON.stringify(updatedPlayer));
+    }
+
+    setCurrentLobby(lobby);
+    return true;
   };
 
   const leaveLobby = () => {
-    if (currentPlayer) {
-      setCurrentPlayer({ ...currentPlayer, isHost: false, isReady: false });
+    if (currentPlayer && currentLobby) {
+      // Remove player from the stored lobby so others see the update
+      const updatedPlayers = currentLobby.players.filter(p => p.id !== currentPlayer.id);
+      
+      if (updatedPlayers.length > 0) {
+        // If host is leaving, assign a new host
+        const needsNewHost = currentPlayer.isHost;
+        if (needsNewHost) {
+          updatedPlayers[0] = { ...updatedPlayers[0], isHost: true, isReady: true };
+        }
+        const updatedLobby = { ...currentLobby, players: updatedPlayers, host: needsNewHost ? updatedPlayers[0] : currentLobby.host };
+        saveLobbyToStore(updatedLobby);
+      } else {
+        // Last player leaving — remove lobby from storage
+        try {
+          const lobbies = getStoredLobbies();
+          delete lobbies[currentLobby.code];
+          localStorage.setItem(LOBBIES_STORAGE_KEY, JSON.stringify(lobbies));
+          window.dispatchEvent(new Event('storage-update'));
+        } catch (e) {
+          console.error('Error removing lobby:', e);
+        }
+      }
+
+      const resetPlayer = { ...currentPlayer, isHost: false, isReady: false };
+      setCurrentPlayer(resetPlayer);
+      localStorage.setItem('playq-player', JSON.stringify(resetPlayer));
     }
     setCurrentLobby(null);
   };

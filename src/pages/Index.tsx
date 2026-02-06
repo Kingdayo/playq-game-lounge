@@ -91,12 +91,15 @@ const Index: React.FC = () => {
     try {
       const success = await joinLobby(cleanedCode);
       if (success) {
+        setShowJoinDialog(false);
+        setJoinCode('');
         navigate(`/lobby/${cleanedCode}`);
       } else {
         setJoinError('Lobby not found. Check the code and try again.');
       }
-    } catch {
-      setJoinError('Failed to join. Please try again.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to join. Please try again.';
+      setJoinError(message);
     } finally {
       setIsJoining(false);
     }
