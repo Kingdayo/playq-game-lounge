@@ -20,6 +20,7 @@ import { toast } from '@/components/ui/use-toast';
 import Confetti from '@/components/Confetti';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { useVoice } from '@/contexts/VoiceContext';
+import VoiceControls from '@/components/VoiceControls';
 import { cn } from '@/lib/utils';
 import { canPlayTile } from '@/lib/dominoes';
 
@@ -27,7 +28,7 @@ const DominoesGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer } = useGame();
-  const { participants: voiceParticipants } = useVoice();
+  const { participants: voiceParticipants, resumeAudio, connect: connectVoice } = useVoice();
   const {
     gameState,
     playTile,
@@ -36,6 +37,13 @@ const DominoesGame: React.FC = () => {
     startGame,
     resetGame
   } = useDominoes();
+
+  // Auto-connect to voice
+  useEffect(() => {
+    if (code && currentPlayer && currentLobby) {
+      connectVoice(`voice-lobby-${code}`, currentPlayer);
+    }
+  }, [code, currentPlayer, currentLobby, connectVoice]);
 
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [showPlacementChoice, setShowPlacementChoice] = useState(false);
@@ -82,7 +90,8 @@ const DominoesGame: React.FC = () => {
 
   if (!currentLobby) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-950">
+        <VoiceControls />
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <h2 className="font-display text-2xl font-bold mb-4 text-white">Connecting to Lobby...</h2>
@@ -93,7 +102,8 @@ const DominoesGame: React.FC = () => {
 
   if (!gameState) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-950" onClick={resumeAudio} onTouchStart={resumeAudio}>
+        <VoiceControls />
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -118,8 +128,9 @@ const DominoesGame: React.FC = () => {
   const otherPlayers = gameState.players.filter(p => p.id !== currentPlayer?.id);
 
   return (
-    <div className="min-h-screen relative overflow-y-auto bg-zinc-950 p-4 sm:p-8 flex flex-col">
+    <div className="min-h-screen relative overflow-y-auto bg-zinc-950 p-4 sm:p-8 flex flex-col" onClick={resumeAudio} onTouchStart={resumeAudio}>
       <Confetti isActive={gameState.status === 'finished'} duration={5000} />
+      <VoiceControls />
 
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between mb-4">

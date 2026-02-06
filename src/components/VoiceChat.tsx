@@ -17,13 +17,15 @@ const VoiceChat: React.FC = () => {
     disconnect,
     toggleMute,
     setVolume,
-    error
+    error,
+    resumeAudio
   } = useVoice();
 
   const { currentLobby, currentPlayer } = useGame();
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     if (currentLobby && currentPlayer) {
+      await resumeAudio();
       connect(`voice-lobby-${currentLobby.code}`, currentPlayer);
     }
   };
@@ -133,7 +135,10 @@ const VoiceChat: React.FC = () => {
             {/* Mute button */}
             <Button
               variant={isMuted ? 'destructive' : 'outline'}
-              onClick={toggleMute}
+              onClick={async () => {
+                await resumeAudio();
+                toggleMute();
+              }}
               className="w-full"
             >
               {isMuted ? (

@@ -18,13 +18,14 @@ import { LudoColor, BOARD_CONFIG, COLORS, GLOBAL_SAFE_SQUARES, getLegalMoves } f
 import Confetti from '@/components/Confetti';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { useVoice } from '@/contexts/VoiceContext';
+import VoiceControls from '@/components/VoiceControls';
 import { cn } from '@/lib/utils';
 
 const LudoGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer } = useGame();
-  const { participants: voiceParticipants } = useVoice();
+  const { participants: voiceParticipants, resumeAudio, connect: connectVoice } = useVoice();
   const {
     gameState,
     rollDice,
@@ -33,9 +34,17 @@ const LudoGame: React.FC = () => {
     resetGame
   } = useLudo();
 
+  // Auto-connect to voice
+  useEffect(() => {
+    if (code && currentPlayer && currentLobby) {
+      connectVoice(`voice-lobby-${code}`, currentPlayer);
+    }
+  }, [code, currentPlayer, currentLobby, connectVoice]);
+
   if (!currentLobby) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-950">
+        <VoiceControls />
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
           <Dices className="w-16 h-16 text-primary mx-auto mb-4 animate-pulse" />
           <h2 className="font-display text-2xl font-bold mb-4 text-white">Connecting to Lobby...</h2>
@@ -46,7 +55,8 @@ const LudoGame: React.FC = () => {
 
   if (!gameState) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-950" onClick={resumeAudio} onTouchStart={resumeAudio}>
+        <VoiceControls />
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -209,8 +219,9 @@ const LudoGame: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-2 sm:p-8 flex flex-col items-center">
+    <div className="min-h-screen bg-zinc-950 p-2 sm:p-8 flex flex-col items-center" onClick={resumeAudio} onTouchStart={resumeAudio}>
       <Confetti isActive={gameState.status === 'finished'} duration={5000} />
+      <VoiceControls />
 
       <div className="w-full max-w-[1600px] flex flex-col xl:flex-row gap-4 sm:gap-8 items-start justify-center">
         {/* Left Side: Players & Info */}

@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { useVoice } from '@/contexts/VoiceContext';
+import VoiceControls from '@/components/VoiceControls';
 import { toast } from '@/components/ui/use-toast';
 import { Stroke, Point } from '@/lib/pictionary';
 import Confetti from '@/components/Confetti';
@@ -163,7 +164,7 @@ const PictionaryGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer } = useGame();
-  const { participants: voiceParticipants } = useVoice();
+  const { participants: voiceParticipants, resumeAudio, connect: connectVoice } = useVoice();
   const {
     gameState,
     drawStroke,
@@ -173,6 +174,13 @@ const PictionaryGame: React.FC = () => {
     undoStroke,
     resetGame
   } = usePictionary();
+
+  // Auto-connect to voice
+  useEffect(() => {
+    if (code && currentPlayer && currentLobby) {
+      connectVoice(`voice-lobby-${code}`, currentPlayer);
+    }
+  }, [code, currentPlayer, currentLobby, connectVoice]);
 
   const [guessText, setGuessText] = useState('');
   const [brushColor, setBrushColor] = useState(COLORS[0]);
@@ -186,7 +194,8 @@ const PictionaryGame: React.FC = () => {
 
   if (!gameState || !currentPlayer || !gameState.players || !gameState.players[gameState.currentDrawerIndex]) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-950">
+        <VoiceControls />
         <p className="text-muted-foreground">Connecting to game...</p>
       </div>
     );
@@ -203,8 +212,13 @@ const PictionaryGame: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 sm:p-8 flex flex-col relative overflow-y-auto bg-zinc-950">
+    <div
+      className="min-h-screen p-4 sm:p-8 flex flex-col relative overflow-y-auto bg-zinc-950"
+      onClick={resumeAudio}
+      onTouchStart={resumeAudio}
+    >
       <Confetti isActive={gameState.status === 'finished'} duration={5000} />
+      <VoiceControls />
 
       {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-5">

@@ -21,13 +21,14 @@ import { UnoColor, isPlayable } from '@/lib/uno';
 import Confetti from '@/components/Confetti';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { useVoice } from '@/contexts/VoiceContext';
+import VoiceControls from '@/components/VoiceControls';
 import { cn } from '@/lib/utils';
 
 const UnoGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer } = useGame();
-  const { participants: voiceParticipants } = useVoice();
+  const { participants: voiceParticipants, resumeAudio, connect: connectVoice } = useVoice();
   const {
     gameState,
     playCard,
@@ -48,6 +49,13 @@ const UnoGame: React.FC = () => {
         // But maybe wait for button? The prompt says "When Start Playing is clicked"
     }
   }, [gameState, currentPlayer, currentLobby]);
+
+  // Auto-connect to voice
+  useEffect(() => {
+    if (code && currentPlayer && currentLobby) {
+      connectVoice(`voice-lobby-${code}`, currentPlayer);
+    }
+  }, [code, currentPlayer, currentLobby, connectVoice]);
 
   // Handle wild card play - show color picker
   const handlePlayCard = (cardId: string) => {
@@ -76,7 +84,8 @@ const UnoGame: React.FC = () => {
 
   if (!currentLobby) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-950">
+        <VoiceControls />
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -91,7 +100,8 @@ const UnoGame: React.FC = () => {
 
   if (!gameState) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-950" onClick={resumeAudio} onTouchStart={resumeAudio}>
+        <VoiceControls />
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -118,8 +128,9 @@ const UnoGame: React.FC = () => {
   const topCard = gameState.discardPile[gameState.discardPile.length - 1];
 
   return (
-    <div className="min-h-screen relative overflow-y-auto bg-zinc-950 p-4 sm:p-8">
+    <div className="min-h-screen relative overflow-y-auto bg-zinc-950 p-4 sm:p-8" onClick={resumeAudio} onTouchStart={resumeAudio}>
       <Confetti isActive={gameState.status === 'finished'} duration={5000} />
+      <VoiceControls />
 
       {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-10">
