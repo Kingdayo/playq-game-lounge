@@ -6,6 +6,7 @@ interface PlayerAvatarProps {
   avatar: string;
   name: string;
   isActive?: boolean;
+  isSpeaking?: boolean;
   isReady?: boolean;
   isHost?: boolean;
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -24,6 +25,7 @@ const PlayerAvatar: React.FC<PlayerAvatarProps> = ({
   avatar,
   name,
   isActive = false,
+  isSpeaking = false,
   isReady = false,
   isHost = false,
   size = 'md',
@@ -42,6 +44,15 @@ const PlayerAvatar: React.FC<PlayerAvatarProps> = ({
               opacity: [0.3, 0.6, 0.3],
             }}
             transition={{ duration: 2, repeat: Infinity }}
+          />
+        )}
+
+        {/* Speaking indicator ring */}
+        {isSpeaking && (
+          <motion.div
+            className="absolute -inset-1.5 rounded-full border-2 border-primary"
+            animate={{ scale: [1, 1.1, 1], opacity: [1, 0.5, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
           />
         )}
 

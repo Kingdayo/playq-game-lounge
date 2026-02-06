@@ -19,6 +19,7 @@ import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PlayerAvatar from '@/components/PlayerAvatar';
+import { useVoice } from '@/contexts/VoiceContext';
 import { toast } from '@/components/ui/use-toast';
 import { Stroke, Point } from '@/lib/pictionary';
 import Confetti from '@/components/Confetti';
@@ -162,6 +163,7 @@ const PictionaryGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer } = useGame();
+  const { participants: voiceParticipants } = useVoice();
   const {
     gameState,
     drawStroke,
@@ -271,6 +273,7 @@ const PictionaryGame: React.FC = () => {
                     <PlayerAvatar
                       avatar={player.avatar}
                       name={player.name}
+                      isSpeaking={voiceParticipants.some(vp => vp.name === player.name && vp.isSpeaking)}
                       size="sm"
                       isReady={player.hasGuessedCorrectly}
                     />

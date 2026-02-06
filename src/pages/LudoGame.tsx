@@ -17,12 +17,14 @@ import { toast } from '@/components/ui/use-toast';
 import { LudoColor, BOARD_CONFIG, COLORS, GLOBAL_SAFE_SQUARES, getLegalMoves } from '@/lib/ludo';
 import Confetti from '@/components/Confetti';
 import PlayerAvatar from '@/components/PlayerAvatar';
+import { useVoice } from '@/contexts/VoiceContext';
 import { cn } from '@/lib/utils';
 
 const LudoGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer } = useGame();
+  const { participants: voiceParticipants } = useVoice();
   const {
     gameState,
     rollDice,
@@ -234,7 +236,12 @@ const LudoGame: React.FC = () => {
                                     animate={gameState.currentPlayerIndex === idx ? { scale: [1, 1.1, 1] } : {}}
                                     transition={{ repeat: Infinity, duration: 2 }}
                                 >
-                                    <PlayerAvatar avatar={player.avatar} name={player.name} size="sm" />
+                                    <PlayerAvatar
+                                        avatar={player.avatar}
+                                        name={player.name}
+                                        isSpeaking={voiceParticipants.some(vp => vp.name === player.name && vp.isSpeaking)}
+                                        size="sm"
+                                    />
                                 </motion.div>
                                 <div className={cn(
                                     "absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950",
