@@ -8,9 +8,11 @@ import {
   Users,
   Info,
   Dices,
+  MessageSquare,
 } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext';
 import { useLudo } from '@/contexts/LudoContext';
+import { useChat } from '@/contexts/ChatContext';
 import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
@@ -19,12 +21,14 @@ import Confetti from '@/components/Confetti';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { useVoice } from '@/contexts/VoiceContext';
 import VoiceControls from '@/components/VoiceControls';
+import ChatPanel from '@/components/ChatPanel';
 import { cn } from '@/lib/utils';
 
 const LudoGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer, leaveLobby } = useGame();
+  const { sendMessage, roomMessages, createLobbyRoom } = useChat();
   const { participants: voiceParticipants, resumeAudio, connect: connectVoice, disconnect: disconnectVoice } = useVoice();
   const {
     gameState,
@@ -33,6 +37,28 @@ const LudoGame: React.FC = () => {
     startGame,
     resetGame
   } = useLudo();
+
+  const [showChat, setShowChat] = React.useState(false);
+
+  const roomId = code ? `lobby-${code}` : '';
+  const messages = roomId ? roomMessages[roomId] || [] : [];
+
+  useEffect(() => {
+    if (code) {
+      createLobbyRoom(code);
+    }
+  }, [code, createLobbyRoom]);
+
+  const handleSendMessage = (content: string) => {
+    if (!currentPlayer || !roomId) return;
+
+    sendMessage(
+      roomId,
+      content,
+      currentPlayer.name,
+      currentPlayer.avatar
+    );
+  };
 
   const handleLeave = () => {
     disconnectVoice();
@@ -291,6 +317,19 @@ const LudoGame: React.FC = () => {
                 Leave
             </Button>
 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowChat(true)}
+              className="w-full relative"
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Chat
+              {messages.length > 0 && (
+                 <span className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full animate-pulse" />
+              )}
+            </Button>
+
             <Button variant="outline" size="sm" className="w-full opacity-50" onClick={() => resetGame()}>
                 <RotateCcw className="w-3 h-3 mr-2" />
                 Reset Game
@@ -430,6 +469,13 @@ const LudoGame: React.FC = () => {
             </motion.div>
         )}
       </AnimatePresence>
+
+      <ChatPanel
+        isOpen={showChat}
+        onClose={() => setShowChat(false)}
+        messages={messages}
+        onSendMessage={handleSendMessage}
+      />
     </div>
   );
 };

@@ -58,7 +58,7 @@ const Layout: React.FC = () => {
       <Sidebar />
 
       {/* Main content */}
-      <main className="relative z-10 sm:ml-64 min-h-screen pb-20 sm:pb-0">
+      <main className="relative sm:ml-64 min-h-screen pb-20 sm:pb-0">
         <Outlet />
       </main>
 

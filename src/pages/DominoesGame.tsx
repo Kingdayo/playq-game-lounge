@@ -9,10 +9,12 @@ import {
   Info,
   ChevronRight,
   ChevronLeft,
-  Hand
+  Hand,
+  MessageSquare
 } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext';
 import { useDominoes } from '@/contexts/DominoesContext';
+import { useChat } from '@/contexts/ChatContext';
 import DominoTileComponent from '@/components/DominoTile';
 import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
@@ -21,6 +23,7 @@ import Confetti from '@/components/Confetti';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { useVoice } from '@/contexts/VoiceContext';
 import VoiceControls from '@/components/VoiceControls';
+import ChatPanel from '@/components/ChatPanel';
 import { cn } from '@/lib/utils';
 import { canPlayTile } from '@/lib/dominoes';
 
@@ -28,6 +31,7 @@ const DominoesGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer, leaveLobby } = useGame();
+  const { sendMessage, roomMessages, createLobbyRoom } = useChat();
   const { participants: voiceParticipants, resumeAudio, connect: connectVoice, disconnect: disconnectVoice } = useVoice();
   const {
     gameState,
@@ -53,6 +57,27 @@ const DominoesGame: React.FC = () => {
 
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [showPlacementChoice, setShowPlacementChoice] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+
+  const roomId = code ? `lobby-${code}` : '';
+  const messages = roomId ? roomMessages[roomId] || [] : [];
+
+  useEffect(() => {
+    if (code) {
+      createLobbyRoom(code);
+    }
+  }, [code, createLobbyRoom]);
+
+  const handleSendMessage = (content: string) => {
+    if (!currentPlayer || !roomId) return;
+
+    sendMessage(
+      roomId,
+      content,
+      currentPlayer.name,
+      currentPlayer.avatar
+    );
+  };
 
   const myPlayer = gameState?.players.find(p => p.id === currentPlayer?.id);
   const isMyTurn = gameState?.currentPlayerIndex === gameState?.players.findIndex(p => p.id === currentPlayer?.id);
@@ -157,9 +182,22 @@ const DominoesGame: React.FC = () => {
           <p className="text-sm text-white/80 italic">{gameState.lastActionMessage || "The game begins!"}</p>
         </div>
 
-        <Button variant="outline" size="icon" onClick={() => resetGame()} title="Reset Game (Debug)" className="text-white border-white/20 hover:bg-white/10">
-          <RotateCcw className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setShowChat(true)}
+            className="relative text-white border-white/20 hover:bg-white/10"
+          >
+            <MessageSquare className="w-4 h-4" />
+            {messages.length > 0 && (
+               <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
+            )}
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => resetGame()} title="Reset Game (Debug)" className="text-white border-white/20 hover:bg-white/10">
+            <RotateCcw className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Main Game Area */}
@@ -426,6 +464,13 @@ const DominoesGame: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ChatPanel
+        isOpen={showChat}
+        onClose={() => setShowChat(false)}
+        messages={messages}
+        onSendMessage={handleSendMessage}
+      />
     </div>
   );
 };

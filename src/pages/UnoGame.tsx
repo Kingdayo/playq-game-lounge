@@ -9,10 +9,12 @@ import {
   Layers,
   Info,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  MessageSquare
 } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext';
 import { useUno } from '@/contexts/UnoContext';
+import { useChat } from '@/contexts/ChatContext';
 import UnoCard from '@/components/UnoCard';
 import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
@@ -22,12 +24,14 @@ import Confetti from '@/components/Confetti';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { useVoice } from '@/contexts/VoiceContext';
 import VoiceControls from '@/components/VoiceControls';
+import ChatPanel from '@/components/ChatPanel';
 import { cn } from '@/lib/utils';
 
 const UnoGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer, leaveLobby } = useGame();
+  const { sendMessage, roomMessages, createLobbyRoom } = useChat();
   const { participants: voiceParticipants, resumeAudio, connect: connectVoice, disconnect: disconnectVoice } = useVoice();
   const {
     gameState,
@@ -42,6 +46,27 @@ const UnoGame: React.FC = () => {
 
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [selectedWildCardId, setSelectedWildCardId] = useState<string | null>(null);
+  const [showChat, setShowChat] = useState(false);
+
+  const roomId = code ? `lobby-${code}` : '';
+  const messages = roomId ? roomMessages[roomId] || [] : [];
+
+  useEffect(() => {
+    if (code) {
+      createLobbyRoom(code);
+    }
+  }, [code, createLobbyRoom]);
+
+  const handleSendMessage = (content: string) => {
+    if (!currentPlayer || !roomId) return;
+
+    sendMessage(
+      roomId,
+      content,
+      currentPlayer.name,
+      currentPlayer.avatar
+    );
+  };
 
   const handleLeave = () => {
     disconnectVoice();
@@ -161,9 +186,22 @@ const UnoGame: React.FC = () => {
             <p className="text-sm text-white/80 italic">{gameState.lastActionMessage || "The game begins!"}</p>
         </div>
 
-        <Button variant="outline" size="icon" onClick={() => resetGame()} title="Reset Game (Debug)">
-            <RotateCcw className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowChat(true)}
+              className="relative"
+            >
+              <MessageSquare className="w-4 h-4" />
+              {messages.length > 0 && (
+                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
+              )}
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => resetGame()} title="Reset Game (Debug)">
+                <RotateCcw className="w-4 h-4" />
+            </Button>
+        </div>
       </div>
 
       {/* Game Area */}
@@ -401,6 +439,14 @@ const UnoGame: React.FC = () => {
             </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Chat Panel */}
+      <ChatPanel
+        isOpen={showChat}
+        onClose={() => setShowChat(false)}
+        messages={messages}
+        onSendMessage={handleSendMessage}
+      />
     </div>
   );
 };
