@@ -19,11 +19,21 @@ interface VoiceContextType {
 
 const VoiceContext = createContext<VoiceContextType | undefined>(undefined);
 
-const ICE_SERVERS = {
+const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
+    // TURN servers are required for reliable connections on mobile networks.
+    // To add a TURN server, set the following environment variables in your .env file:
+    // VITE_TURN_SERVER_URL=turn:your-turn-server.com:3478
+    // VITE_TURN_SERVER_USER=your-username
+    // VITE_TURN_SERVER_PASS=your-password
+    ...(import.meta.env.VITE_TURN_SERVER_URL ? [{
+      urls: import.meta.env.VITE_TURN_SERVER_URL,
+      username: import.meta.env.VITE_TURN_SERVER_USER,
+      credential: import.meta.env.VITE_TURN_SERVER_PASS,
+    }] : []),
   ],
 };
 
@@ -35,8 +45,8 @@ export const useVoice = () => {
   return context;
 };
 
-// Audio Element for remote streams
-function AudioElement({ stream, volume }: { stream: MediaStream, volume: number }) {
+// Audio Element for remote streams (Required for iOS Safari audio routing)
+function AudioElement({ stream }: { stream: MediaStream }) {
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const attemptPlay = useCallback(async () => {
@@ -44,8 +54,7 @@ function AudioElement({ stream, volume }: { stream: MediaStream, volume: number 
     try {
       await audioRef.current.play();
     } catch (e) {
-      console.warn('Autoplay prevented, waiting for user interaction:', e);
-      // Fallback: retry play on next body click
+      console.warn('Autoplay prevented for hidden audio, waiting for user interaction:', e);
       const retry = () => {
         audioRef.current?.play().catch(() => {});
         window.removeEventListener('click', retry);
@@ -59,12 +68,13 @@ function AudioElement({ stream, volume }: { stream: MediaStream, volume: number 
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.srcObject = stream;
-      audioRef.current.volume = volume / 100;
       attemptPlay();
     }
-  }, [stream, volume, attemptPlay]);
+  }, [stream, attemptPlay]);
 
-  return <audio ref={audioRef} autoPlay playsInline />;
+  // We keep this muted because AudioContext handles the actual audible playback.
+  // The element just needs to be "playing" in the DOM for iOS to route WebRTC audio.
+  return <audio ref={audioRef} autoPlay playsInline muted className="hidden" aria-hidden="true" />;
 }
 
 export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -82,15 +92,18 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Refs for WebRTC management
   const localStreamRef = useRef<MediaStream | null>(null);
   const pcsRef = useRef<Record<string, RTCPeerConnection>>({});
+  const makingOfferRef = useRef<Record<string, boolean>>({});
+  const ignoreOfferRef = useRef<Record<string, boolean>>({});
   const remoteStreamsRef = useRef<Record<string, MediaStream>>({});
-  const iceQueuesRef = useRef<Record<string, RTCIceCandidateInit[]>>({});
   const channelRef = useRef<any>(null);
   const localPlayerRef = useRef<Player | null>(null);
   const lobbyCodeRef = useRef<string | null>(null);
 
-  // Audio Analysis Refs
+  // Audio Refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const analysersRef = useRef<Record<string, AnalyserNode>>({});
+  const sourceNodesRef = useRef<Record<string, MediaStreamAudioSourceNode>>({});
+  const masterGainRef = useRef<GainNode | null>(null);
 
   const resumeAudio = useCallback(async () => {
     if (audioContextRef.current) {
@@ -117,17 +130,32 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setParticipants(list);
   }, [currentLobby, speakingStates, isMuted]);
 
-  const setupAudioAnalysis = useCallback((stream: MediaStream, playerId: string) => {
+  const setupAudioSystem = useCallback((stream: MediaStream, playerId: string, isRemote: boolean = false) => {
     try {
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        masterGainRef.current = audioContextRef.current.createGain();
+        masterGainRef.current.connect(audioContextRef.current.destination);
+      }
+
+      // Cleanup existing if any
+      if (sourceNodesRef.current[playerId]) {
+        sourceNodesRef.current[playerId].disconnect();
       }
 
       const source = audioContextRef.current.createMediaStreamSource(stream);
+      sourceNodesRef.current[playerId] = source;
+
+      // Setup Analyser for VAD
       const analyser = audioContextRef.current.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
       analysersRef.current[playerId] = analyser;
+
+      // If remote, connect to master gain for playback
+      if (isRemote && masterGainRef.current) {
+        source.connect(masterGainRef.current);
+      }
 
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
@@ -159,25 +187,34 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
-  const processIceQueue = useCallback(async (remoteId: string, pc: RTCPeerConnection) => {
-    const queue = iceQueuesRef.current[remoteId] || [];
-    while (queue.length > 0) {
-      const candidate = queue.shift();
-      if (candidate) {
-        try {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate));
-        } catch (e) {
-          console.error(`Error adding queued ICE candidate for ${remoteId}:`, e);
-        }
-      }
-    }
-  }, []);
 
-  const createPeerConnection = useCallback((remoteId: string, shouldCreateOffer: boolean) => {
+  const createPeerConnection = useCallback((remoteId: string) => {
     if (pcsRef.current[remoteId]) return pcsRef.current[remoteId];
 
-    console.log(`Creating PeerConnection for ${remoteId}, shouldCreateOffer: ${shouldCreateOffer}`);
     const pc = new RTCPeerConnection(ICE_SERVERS);
+
+    pc.onnegotiationneeded = async () => {
+      try {
+        makingOfferRef.current[remoteId] = true;
+        await pc.setLocalDescription();
+        if (channelRef.current) {
+          channelRef.current.send({
+            type: 'broadcast',
+            event: 'signal',
+            payload: {
+              from: localPlayerRef.current?.id,
+              to: remoteId,
+              type: 'description',
+              data: pc.localDescription
+            }
+          });
+        }
+      } catch (err) {
+        console.error(`Error in onnegotiationneeded for ${remoteId}:`, err);
+      } finally {
+        makingOfferRef.current[remoteId] = false;
+      }
+    };
 
     pc.onicecandidate = (event) => {
       if (event.candidate && channelRef.current) {
@@ -198,28 +235,36 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log(`Received remote track from ${remoteId}`);
       const stream = event.streams[0];
       remoteStreamsRef.current[remoteId] = stream;
-      setupAudioAnalysis(stream, remoteId);
+      setupAudioSystem(stream, remoteId, true);
       updateParticipantsList();
     };
 
     pc.oniceconnectionstatechange = () => {
         console.log(`ICE state for ${remoteId}: ${pc.iceConnectionState}`);
-        if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'closed') {
-            console.log(`Cleaning up connection for ${remoteId}`);
-            delete pcsRef.current[remoteId];
-            delete remoteStreamsRef.current[remoteId];
-            delete analysersRef.current[remoteId];
-            delete iceQueuesRef.current[remoteId];
-            pc.close();
-            updateParticipantsList();
 
-            if (pc.iceConnectionState === 'failed' && channelRef.current) {
-                 channelRef.current.send({
-                    type: 'broadcast',
-                    event: 'signal',
-                    payload: { from: localPlayerRef.current?.id, type: 'join' }
-                  });
-            }
+        if (pc.iceConnectionState === 'failed') {
+            console.log(`ICE failed for ${remoteId}, restarting...`);
+            pc.restartIce();
+        }
+
+        if (pc.iceConnectionState === 'closed' || pc.iceConnectionState === 'disconnected') {
+            // Give it a moment to potentially reconnect before cleaning up
+            setTimeout(() => {
+              if (pc.iceConnectionState === 'closed' || pc.iceConnectionState === 'disconnected') {
+                console.log(`Cleaning up connection for ${remoteId}`);
+                if (sourceNodesRef.current[remoteId]) {
+                  sourceNodesRef.current[remoteId].disconnect();
+                  delete sourceNodesRef.current[remoteId];
+                }
+                delete pcsRef.current[remoteId];
+                delete remoteStreamsRef.current[remoteId];
+                delete analysersRef.current[remoteId];
+                delete makingOfferRef.current[remoteId];
+                delete ignoreOfferRef.current[remoteId];
+                pc.close();
+                updateParticipantsList();
+              }
+            }, 5000);
         }
     };
 
@@ -230,78 +275,70 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     pcsRef.current[remoteId] = pc;
-
-    if (shouldCreateOffer) {
-      pc.createOffer({ offerToReceiveAudio: true }).then(offer => {
-        return pc.setLocalDescription(offer);
-      }).then(() => {
-        if (channelRef.current) {
-          channelRef.current.send({
-            type: 'broadcast',
-            event: 'signal',
-            payload: {
-              from: localPlayerRef.current?.id,
-              to: remoteId,
-              type: 'offer',
-              data: pc.localDescription
-            }
-          });
-        }
-      });
-    }
-
     return pc;
-  }, [setupAudioAnalysis, updateParticipantsList]);
+  }, [setupAudioSystem, updateParticipantsList]);
 
   const handleSignal = useCallback(async ({ payload }: { payload: any }) => {
     const { from, to, type, data } = payload;
 
     if (type === 'join') {
         if (from === localPlayerRef.current?.id) return;
-        if (localPlayerRef.current && localPlayerRef.current.id < from) {
-            createPeerConnection(from, true);
-        }
+        createPeerConnection(from);
         return;
     }
 
     if (to !== localPlayerRef.current?.id) return;
 
     try {
-        if (type === 'offer') {
-            const pc = createPeerConnection(from, false);
-            await pc.setRemoteDescription(new RTCSessionDescription(data));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            channelRef.current.send({
-                type: 'broadcast',
-                event: 'signal',
-                payload: {
-                    from: localPlayerRef.current?.id,
-                    to: from,
-                    type: 'answer',
-                    data: pc.localDescription
-                }
-            });
-            await processIceQueue(from, pc);
-        } else if (type === 'answer') {
-            const pc = pcsRef.current[from];
-            if (pc) {
+        const pc = createPeerConnection(from);
+        const polite = localPlayerRef.current && localPlayerRef.current.id < from;
+
+        if (type === 'description') {
+            const offerCollision = (data.type === 'offer') &&
+                                   (makingOfferRef.current[from] || pc.signalingState !== 'stable');
+
+            ignoreOfferRef.current[from] = !polite && offerCollision;
+            if (ignoreOfferRef.current[from]) {
+                console.log(`Ignoring offer collision from ${from} (impolite)`);
+                return;
+            }
+
+            if (offerCollision) {
+                await Promise.all([
+                    pc.setLocalDescription({ type: 'rollback' } as RTCSessionDescriptionInit),
+                    pc.setRemoteDescription(new RTCSessionDescription(data))
+                ]);
+            } else {
                 await pc.setRemoteDescription(new RTCSessionDescription(data));
-                await processIceQueue(from, pc);
+            }
+            if (data.type === 'offer') {
+                await pc.setLocalDescription();
+                if (channelRef.current) {
+                    channelRef.current.send({
+                        type: 'broadcast',
+                        event: 'signal',
+                        payload: {
+                            from: localPlayerRef.current?.id,
+                            to: from,
+                            type: 'description',
+                            data: pc.localDescription
+                        }
+                    });
+                }
             }
         } else if (type === 'ice-candidate') {
-            const pc = pcsRef.current[from];
-            if (pc && pc.remoteDescription) {
+            try {
                 await pc.addIceCandidate(new RTCIceCandidate(data));
-            } else {
-                if (!iceQueuesRef.current[from]) iceQueuesRef.current[from] = [];
-                iceQueuesRef.current[from].push(data);
+            } catch (err) {
+                if (!ignoreOfferRef.current[from]) {
+                    throw err;
+                }
             }
         }
     } catch (err) {
         console.error('Error handling signal:', err);
     }
-  }, [createPeerConnection, processIceQueue]);
+  }, [createPeerConnection]);
 
   const disconnect = useCallback(() => {
     if (channelRef.current) {
@@ -314,6 +351,11 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
     pcsRef.current = {};
 
+    Object.values(sourceNodesRef.current).forEach(node => {
+        try { node.disconnect(); } catch(e) {}
+    });
+    sourceNodesRef.current = {};
+
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
       localStreamRef.current = null;
@@ -321,7 +363,6 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     remoteStreamsRef.current = {};
     analysersRef.current = {};
-    iceQueuesRef.current = {};
 
     setIsConnected(false);
     setIsConnecting(false);
@@ -346,12 +387,14 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true
+          autoGainControl: true,
+          sampleRate: 48000,
+          channelCount: 1,
         }
       });
 
       localStreamRef.current = stream;
-      setupAudioAnalysis(stream, player.id);
+      setupAudioSystem(stream, player.id, false);
 
       const channel = supabase.channel(`voice-${roomName}`);
 
@@ -384,7 +427,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setIsConnecting(false);
       disconnect();
     }
-  }, [isConnected, isConnecting, handleSignal, setupAudioAnalysis, disconnect]);
+  }, [isConnected, isConnecting, handleSignal, setupAudioSystem, disconnect]);
 
   const toggleMute = useCallback(() => {
     if (localStreamRef.current) {
@@ -399,6 +442,9 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setVolume = useCallback((newVolume: number) => {
     setVolumeState(newVolume);
+    if (masterGainRef.current) {
+        masterGainRef.current.gain.setTargetAtTime(newVolume / 100, audioContextRef.current?.currentTime || 0, 0.1);
+    }
   }, []);
 
   useEffect(() => {
@@ -409,6 +455,15 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && isConnected) {
         resumeAudio();
+
+        // Check health of all peer connections
+        Object.entries(pcsRef.current).forEach(([id, pc]) => {
+          if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+            console.log(`Connection to ${id} is ${pc.iceConnectionState}, attempting ICE restart...`);
+            pc.restartIce();
+          }
+        });
+
         // Send a join signal again to refresh connections if any dropped
         if (channelRef.current && localPlayerRef.current) {
           channelRef.current.send({
@@ -446,10 +501,10 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }}
     >
       {children}
-      <div className="hidden">
+      <div className="hidden" aria-hidden="true">
         {participants.map(p => {
           if (p.id !== localPlayerRef.current?.id && p.stream) {
-            return <AudioElement key={p.id} stream={p.stream} volume={volume} />;
+            return <AudioElement key={p.id} stream={p.stream} />;
           }
           return null;
         })}
