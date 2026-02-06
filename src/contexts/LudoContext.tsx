@@ -157,9 +157,8 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
     }
 
-    // Start rolling animation
-    let newState = { ...gameState, isRolling: true };
-    setGameState(newState);
+    // Start rolling animation - broadcast so others see it
+    saveGameState({ ...gameState, isRolling: true });
 
     // Simulate rolling delay
     setTimeout(() => {
@@ -169,13 +168,16 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const legalMoves = getLegalMoves(stateAfterRoll);
         if (legalMoves.length === 0) {
             stateAfterRoll.lastActionMessage = `${currentPlayer.name} rolled a ${diceValue} but has no legal moves.`;
+            // Save state first so everyone sees the dice value and the message
+            saveGameState(stateAfterRoll);
+
             toast({ title: `Rolled ${diceValue}`, description: "No legal moves available." });
 
             // Wait a bit before skipping turn
             setTimeout(() => {
                 const stateAfterSkip = skipTurn(gameStateRef.current!);
                 saveGameState(stateAfterSkip);
-            }, 1500);
+            }, 2000);
         } else {
             stateAfterRoll.lastActionMessage = `${currentPlayer.name} rolled a ${diceValue}.`;
             saveGameState(stateAfterRoll);
