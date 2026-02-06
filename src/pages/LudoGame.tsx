@@ -14,7 +14,7 @@ import { useLudo } from '@/contexts/LudoContext';
 import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { LudoColor, BOARD_CONFIG, COLORS, GLOBAL_SAFE_SQUARES, getLegalMoves, initializeGame } from '@/lib/ludo';
+import { LudoColor, BOARD_CONFIG, COLORS, GLOBAL_SAFE_SQUARES, getLegalMoves } from '@/lib/ludo';
 import Confetti from '@/components/Confetti';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { cn } from '@/lib/utils';
