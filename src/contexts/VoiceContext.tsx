@@ -95,6 +95,8 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const makingOfferRef = useRef<Record<string, boolean>>({});
   const ignoreOfferRef = useRef<Record<string, boolean>>({});
   const remoteStreamsRef = useRef<Record<string, MediaStream>>({});
+  const iceQueuesRef = useRef<Record<string, RTCIceCandidateInit[]>>({});
+  const cleanupTimeoutsRef = useRef<Record<string, any>>({});
   const channelRef = useRef<any>(null);
   const localPlayerRef = useRef<Player | null>(null);
   const lobbyCodeRef = useRef<string | null>(null);
@@ -159,6 +161,9 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
+      let speakingFrames = 0;
+      let silentFrames = 0;
+      const FRAME_THRESHOLD = 5;
 
       const checkSpeaking = () => {
         if (!analysersRef.current?.[playerId]) return;
@@ -169,12 +174,27 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           sum += dataArray[i];
         }
         const average = sum / bufferLength;
-        const isSpeaking = average > 15; // Slightly more sensitive for mobile
+        const levelDetected = average > 15;
 
-        setSpeakingStates(prev => {
-          if (prev[playerId] === isSpeaking) return prev;
-          return { ...prev, [playerId]: isSpeaking };
-        });
+        if (levelDetected) {
+            speakingFrames++;
+            silentFrames = 0;
+        } else {
+            silentFrames++;
+            speakingFrames = 0;
+        }
+
+        if (speakingFrames >= FRAME_THRESHOLD) {
+            setSpeakingStates(prev => {
+                if (prev[playerId]) return prev;
+                return { ...prev, [playerId]: true };
+            });
+        } else if (silentFrames >= FRAME_THRESHOLD * 2) { // Allow more silence before switching off
+            setSpeakingStates(prev => {
+                if (!prev[playerId]) return prev;
+                return { ...prev, [playerId]: false };
+            });
+        }
 
         if (localStreamRef.current || remoteStreamsRef.current[playerId]) {
           requestAnimationFrame(checkSpeaking);
@@ -187,6 +207,20 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  const processIceQueue = useCallback(async (remoteId: string, pc: RTCPeerConnection) => {
+    const queue = iceQueuesRef.current[remoteId] || [];
+    while (queue.length > 0) {
+      const candidate = queue.shift();
+      if (candidate) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+          console.error(`Error adding queued ICE candidate for ${remoteId}:`, e);
+        }
+      }
+    }
+    delete iceQueuesRef.current[remoteId];
+  }, []);
 
   const createPeerConnection = useCallback((remoteId: string) => {
     if (pcsRef.current[remoteId]) return pcsRef.current[remoteId];
@@ -242,14 +276,23 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     pc.oniceconnectionstatechange = () => {
         console.log(`ICE state for ${remoteId}: ${pc.iceConnectionState}`);
 
+        if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+            if (cleanupTimeoutsRef.current[remoteId]) {
+                clearTimeout(cleanupTimeoutsRef.current[remoteId]);
+                delete cleanupTimeoutsRef.current[remoteId];
+            }
+        }
+
         if (pc.iceConnectionState === 'failed') {
             console.log(`ICE failed for ${remoteId}, restarting...`);
             pc.restartIce();
         }
 
         if (pc.iceConnectionState === 'closed' || pc.iceConnectionState === 'disconnected') {
+            if (cleanupTimeoutsRef.current[remoteId]) return;
+
             // Give it a moment to potentially reconnect before cleaning up
-            setTimeout(() => {
+            cleanupTimeoutsRef.current[remoteId] = setTimeout(() => {
               if (pc.iceConnectionState === 'closed' || pc.iceConnectionState === 'disconnected') {
                 console.log(`Cleaning up connection for ${remoteId}`);
                 if (sourceNodesRef.current[remoteId]) {
@@ -261,6 +304,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 delete analysersRef.current[remoteId];
                 delete makingOfferRef.current[remoteId];
                 delete ignoreOfferRef.current[remoteId];
+                delete cleanupTimeoutsRef.current[remoteId];
                 pc.close();
                 updateParticipantsList();
               }
@@ -311,6 +355,9 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             } else {
                 await pc.setRemoteDescription(new RTCSessionDescription(data));
             }
+
+            await processIceQueue(from, pc);
+
             if (data.type === 'offer') {
                 await pc.setLocalDescription();
                 if (channelRef.current) {
@@ -328,7 +375,12 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
         } else if (type === 'ice-candidate') {
             try {
-                await pc.addIceCandidate(new RTCIceCandidate(data));
+                if (pc.remoteDescription) {
+                    await pc.addIceCandidate(new RTCIceCandidate(data));
+                } else {
+                    if (!iceQueuesRef.current[from]) iceQueuesRef.current[from] = [];
+                    iceQueuesRef.current[from].push(data);
+                }
             } catch (err) {
                 if (!ignoreOfferRef.current[from]) {
                     throw err;
@@ -338,7 +390,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (err) {
         console.error('Error handling signal:', err);
     }
-  }, [createPeerConnection]);
+  }, [createPeerConnection, processIceQueue]);
 
   const disconnect = useCallback(() => {
     if (channelRef.current) {
@@ -355,6 +407,11 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         try { node.disconnect(); } catch(e) {}
     });
     sourceNodesRef.current = {};
+
+    Object.values(cleanupTimeoutsRef.current).forEach(timeout => {
+        clearTimeout(timeout);
+    });
+    cleanupTimeoutsRef.current = {};
 
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
