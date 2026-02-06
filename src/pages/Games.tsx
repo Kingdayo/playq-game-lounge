@@ -78,8 +78,8 @@ const Games: React.FC = () => {
   const navigate = useNavigate();
   const { createLobby } = useGame();
 
-  const handleCreateGame = (gameId: string) => {
-    const lobby = createLobby(gameId as 'uno' | 'ludo' | 'pictionary' | 'dominoes');
+  const handleCreateGame = async (gameId: string) => {
+    const lobby = await createLobby(gameId as 'uno' | 'ludo' | 'pictionary' | 'dominoes');
     navigate(`/lobby/${lobby.code}`);
   };
 
