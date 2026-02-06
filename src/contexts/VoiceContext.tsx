@@ -72,9 +72,17 @@ function AudioElement({ stream }: { stream: MediaStream }) {
     }
   }, [stream, attemptPlay]);
 
-  // We keep this muted because AudioContext handles the actual audible playback.
-  // The element just needs to be "playing" in the DOM for iOS to route WebRTC audio.
-  return <audio ref={audioRef} autoPlay playsInline muted className="hidden" aria-hidden="true" />;
+  // We keep the volume at 0 because AudioContext handles the actual audible playback.
+  // The element just needs to be "playing" in the DOM for iOS to route WebRTC audio correctly.
+  // Using muted={true} can sometimes cause iOS to suspend the media tracks.
+  useEffect(() => {
+    if (audioRef.current) {
+        audioRef.current.muted = false;
+        audioRef.current.volume = 0;
+    }
+  }, []);
+
+  return <audio ref={audioRef} autoPlay playsInline className="hidden" aria-hidden="true" />;
 }
 
 export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -90,6 +98,8 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [speakingStates, setSpeakingStates] = useState<Record<string, boolean>>({});
 
   // Refs for WebRTC management
+  const isConnectedRef = useRef(false);
+  const isConnectingRef = useRef(false);
   const localStreamRef = useRef<MediaStream | null>(null);
   const pcsRef = useRef<Record<string, RTCPeerConnection>>({});
   const makingOfferRef = useRef<Record<string, boolean>>({});
@@ -100,6 +110,8 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const channelRef = useRef<any>(null);
   const localPlayerRef = useRef<Player | null>(null);
   const lobbyCodeRef = useRef<string | null>(null);
+  const handleSignalRef = useRef<any>(null);
+  const updateParticipantsListRef = useRef<any>(null);
 
   // Audio Refs
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -270,7 +282,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const stream = event.streams[0];
       remoteStreamsRef.current[remoteId] = stream;
       setupAudioSystem(stream, remoteId, true);
-      updateParticipantsList();
+      updateParticipantsListRef.current?.();
     };
 
     pc.oniceconnectionstatechange = () => {
@@ -306,7 +318,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 delete ignoreOfferRef.current[remoteId];
                 delete cleanupTimeoutsRef.current[remoteId];
                 pc.close();
-                updateParticipantsList();
+                updateParticipantsListRef.current?.();
               }
             }, 5000);
         }
@@ -320,7 +332,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     pcsRef.current[remoteId] = pc;
     return pc;
-  }, [setupAudioSystem, updateParticipantsList]);
+  }, [setupAudioSystem]);
 
   const handleSignal = useCallback(async ({ payload }: { payload: any }) => {
     const { from, to, type, data } = payload;
@@ -393,6 +405,9 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [createPeerConnection, processIceQueue]);
 
   const disconnect = useCallback(() => {
+    lobbyCodeRef.current = null;
+    isConnectedRef.current = false;
+    isConnectingRef.current = false;
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
@@ -428,9 +443,12 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const connect = useCallback(async (roomName: string, player: Player) => {
-    if (isConnected || isConnecting) return;
+    if (lobbyCodeRef.current === roomName && (isConnectedRef.current || isConnectingRef.current)) {
+        return;
+    }
 
     setIsConnecting(true);
+    isConnectingRef.current = true;
     setError(null);
     localPlayerRef.current = player;
     lobbyCodeRef.current = roomName;
@@ -456,11 +474,13 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const channel = supabase.channel(`voice-${roomName}`);
 
       channel
-        .on('broadcast', { event: 'signal' }, handleSignal)
+        .on('broadcast', { event: 'signal' }, (payload) => handleSignalRef.current?.(payload))
         .subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
             setIsConnected(true);
+            isConnectedRef.current = true;
             setIsConnecting(false);
+            isConnectingRef.current = false;
 
             channel.send({
               type: 'broadcast',
@@ -468,8 +488,15 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               payload: { from: player.id, type: 'join' }
             });
           } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-              setIsConnected(false);
-              setIsConnecting(false);
+              // Handle transient glitches with a slight delay
+              setTimeout(() => {
+                if (channelRef.current === channel) {
+                  setIsConnected(false);
+                  isConnectedRef.current = false;
+                  setIsConnecting(false);
+                  isConnectingRef.current = false;
+                }
+              }, 2000);
           }
         });
 
@@ -482,9 +509,10 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setError(err.message || 'Could not access microphone.');
       }
       setIsConnecting(false);
+      isConnectingRef.current = false;
       disconnect();
     }
-  }, [isConnected, isConnecting, handleSignal, setupAudioSystem, disconnect]);
+  }, [setupAudioSystem, disconnect]);
 
   const toggleMute = useCallback(() => {
     if (localStreamRef.current) {
@@ -503,6 +531,14 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         masterGainRef.current.gain.setTargetAtTime(newVolume / 100, audioContextRef.current?.currentTime || 0, 0.1);
     }
   }, []);
+
+  useEffect(() => {
+    handleSignalRef.current = handleSignal;
+  }, [handleSignal]);
+
+  useEffect(() => {
+    updateParticipantsListRef.current = updateParticipantsList;
+  }, [updateParticipantsList]);
 
   useEffect(() => {
     updateParticipantsList();
@@ -537,9 +573,14 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleVisibilityChange);
+    };
+  }, [isConnected, resumeAudio]);
+
+  useEffect(() => {
+    return () => {
       disconnect();
     };
-  }, [disconnect, isConnected, resumeAudio]);
+  }, [disconnect]);
 
   return (
     <VoiceContext.Provider
