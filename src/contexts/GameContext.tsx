@@ -36,6 +36,7 @@ interface GameContextType {
   joinLobby: (code: string) => Promise<boolean>;
   leaveLobby: () => Promise<void>;
   setPlayerReady: (ready: boolean) => Promise<void>;
+  startGame: () => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -102,9 +103,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   // Rehydrate lobby from URL on mount
   React.useEffect(() => {
     const path = window.location.pathname;
-    const match = path.match(/\/lobby\/([a-zA-Z0-9]{6})/);
+    const match = path.match(/\/(lobby|game\/uno)\/([a-zA-Z0-9]{6})/);
     if (match && !activeLobbyCode) {
-      setActiveLobbyCode(match[1].toUpperCase());
+      setActiveLobbyCode(match[2].toUpperCase());
     }
   }, [activeLobbyCode]);
 
@@ -305,6 +306,20 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     updateCurrentPlayer(updatedPlayer);
   }, [currentPlayer, currentLobby, updateCurrentPlayer]);
 
+  const startGame = useCallback(async () => {
+    if (!currentLobby || !currentPlayer?.isHost) return;
+
+    const { error } = await supabase
+      .from('lobbies')
+      .update({ status: 'in-progress' })
+      .eq('id', currentLobby.id);
+
+    if (error) {
+      console.error('Error starting game:', error);
+      throw new Error('Failed to start game');
+    }
+  }, [currentLobby, currentPlayer]);
+
   return (
     <GameContext.Provider
       value={{
@@ -315,6 +330,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         joinLobby,
         leaveLobby,
         setPlayerReady,
+        startGame,
       }}
     >
       {children}
