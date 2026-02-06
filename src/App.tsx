@@ -7,12 +7,14 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { GameProvider } from "@/contexts/GameContext";
 import { LoadingProvider } from "@/contexts/LoadingContext";
 import { ChatProvider } from "@/contexts/ChatContext";
+import { UnoProvider } from "@/contexts/UnoContext";
 import Layout from "@/components/Layout";
 import Index from "./pages/Index";
 import Games from "./pages/Games";
 import Lobby from "./pages/Lobby";
 import Settings from "./pages/Settings";
 import Chat from "./pages/Chat";
+import UnoGame from "./pages/UnoGame";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,8 +24,9 @@ const App = () => (
     <ThemeProvider>
       <LoadingProvider>
         <GameProvider>
-          <ChatProvider>
-            <TooltipProvider>
+          <UnoProvider>
+            <ChatProvider>
+              <TooltipProvider>
               <Toaster />
               <Sonner />
               <BrowserRouter>
@@ -32,6 +35,7 @@ const App = () => (
                     <Route path="/" element={<Index />} />
                     <Route path="/games" element={<Games />} />
                     <Route path="/lobby/:code" element={<Lobby />} />
+                    <Route path="/game/uno/:code" element={<UnoGame />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/chat" element={<Chat />} />
                   </Route>
@@ -39,7 +43,8 @@ const App = () => (
                 </Routes>
               </BrowserRouter>
             </TooltipProvider>
-          </ChatProvider>
+            </ChatProvider>
+          </UnoProvider>
         </GameProvider>
       </LoadingProvider>
     </ThemeProvider>

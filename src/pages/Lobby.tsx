@@ -20,14 +20,16 @@ import VoiceChat from '@/components/VoiceChat';
 import ChatPanel from '@/components/ChatPanel';
 import { useGame } from '@/contexts/GameContext';
 import { useChat } from '@/contexts/ChatContext';
+import { useUno } from '@/contexts/UnoContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 const Lobby: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { currentLobby, currentPlayer, setPlayerReady, leaveLobby } = useGame();
+  const { currentLobby, currentPlayer, setPlayerReady, leaveLobby, startGame: startLobbyGame } = useGame();
   const { sendMessage, roomMessages, createLobbyRoom } = useChat();
+  const { startGame: startUnoGame } = useUno();
   
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,6 +53,13 @@ const Lobby: React.FC = () => {
     }
   }, [code, createLobbyRoom]);
 
+  // Handle game start synchronization
+  useEffect(() => {
+    if (currentLobby?.status === 'in-progress') {
+      navigate(`/game/${currentLobby.gameType}/${code}`);
+    }
+  }, [currentLobby?.status, currentLobby?.gameType, code, navigate]);
+
   const handleCopyCode = () => {
     if (code) {
       navigator.clipboard.writeText(code);
@@ -70,9 +79,17 @@ const Lobby: React.FC = () => {
     );
   };
 
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
     if (!currentLobby) return;
-    navigate(`/game/${currentLobby.gameType}/${code}`);
+
+    try {
+      if (currentLobby.gameType === 'uno') {
+        startUnoGame();
+      }
+      await startLobbyGame();
+    } catch (error) {
+      console.error('Failed to start game:', error);
+    }
   };
 
   const handleLeaveLobby = () => {
