@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { UnoCard, UnoColor, UnoGameState, initializeGame, isPlayable, getNextPlayerIndex, shuffle, createDeck } from '../lib/uno';
 import { useGame } from './GameContext';
 import { toast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UnoContextType {
   gameState: UnoGameState | null;
@@ -27,40 +28,110 @@ export const useUno = () => {
 export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentLobby, currentPlayer } = useGame();
   const [gameState, setGameState] = useState<UnoGameState | null>(null);
+  const gameStateRef = useRef<UnoGameState | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
 
   const lobbyCode = currentLobby?.code;
   const storageKey = lobbyCode ? `playq-uno-game-${lobbyCode}` : null;
 
-  // Load game state from localStorage
+  // Sync state with others via Supabase Broadcast
+  useEffect(() => {
+    if (!lobbyCode || !currentPlayer) return;
+
+    const channel = supabase.channel(`uno-game-${lobbyCode}`, {
+        config: {
+            broadcast: { self: false }
+        }
+    });
+
+    channel
+        .on('broadcast', { event: 'state_update' }, ({ payload }) => {
+            console.log('Received UNO state update:', payload);
+            setGameState(payload);
+        })
+        .on('broadcast', { event: 'request_state' }, () => {
+            // If I am the host, I should respond with the current state
+            if (currentPlayer.isHost && gameStateRef.current) {
+                channel.send({
+                    type: 'broadcast',
+                    event: 'state_update',
+                    payload: gameStateRef.current
+                });
+            }
+        })
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                // If I am not the host and don't have a state, request it
+                if (!currentPlayer.isHost && !gameStateRef.current) {
+                    channel.send({
+                        type: 'broadcast',
+                        event: 'request_state',
+                        payload: {}
+                    });
+                }
+            }
+        });
+
+    channelRef.current = channel;
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
+  }, [lobbyCode, currentPlayer]);
+
+  // Load game state from localStorage (Initial cache)
   useEffect(() => {
     if (storageKey) {
       const stored = localStorage.getItem(storageKey);
-      if (stored) {
+      if (stored && !gameState) {
         setGameState(JSON.parse(stored));
       }
-    } else {
-      setGameState(null);
     }
-  }, [storageKey]);
-
-  // Sync game state across tabs
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === storageKey && e.newValue) {
-        setGameState(JSON.parse(e.newValue));
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [storageKey]);
+  }, [storageKey, gameState]);
 
   const saveGameState = useCallback((newState: UnoGameState) => {
+    setGameState(newState);
     if (storageKey) {
       localStorage.setItem(storageKey, JSON.stringify(newState));
-      setGameState(newState);
     }
-  }, [storageKey]);
+
+    // Broadcast new state to all players
+    if (channelRef.current) {
+        channelRef.current.send({
+            type: 'broadcast',
+            event: 'state_update',
+            payload: newState
+        });
+    }
+
+    // Also persist to Supabase house_rules for reliable multi-device sync/refreshes
+    if (currentLobby?.id && currentPlayer) {
+        supabase
+            .from('lobbies')
+            .update({
+                house_rules: {
+                    ...(currentLobby.settings.houseRules || {}),
+                    unoGameState: newState
+                }
+            })
+            .eq('id', currentLobby.id)
+            .then(({ error }) => {
+                if (error) console.error('Failed to persist UNO state to Supabase:', error);
+            });
+    }
+  }, [storageKey, channelRef, currentLobby, currentPlayer]);
+
+  // Sync state from Supabase on mount or lobby update (initial load/refresh)
+  useEffect(() => {
+      const dbState = currentLobby?.settings.houseRules?.unoGameState as UnoGameState | undefined;
+      if (dbState && !gameState) {
+          setGameState(dbState);
+      }
+  }, [currentLobby?.settings.houseRules?.unoGameState, gameState]);
 
   const startGame = useCallback(() => {
     if (!currentLobby || !currentPlayer?.isHost) return;
@@ -174,11 +245,6 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Wild cards need color selection
     if (card.color === 'wild') {
       newState.status = 'playing'; // Still playing, but UI should show color picker
-      // We don't move turn until color is selected? Actually in UNO turn moves AFTER color is selected.
-      // To simplify, let's keep the turn on current player until they select color, OR
-      // let them select color as part of playing.
-      // Let's make it so if a wild is played, newState.selectedColor is null and it's still current player's "sub-turn"
-      // to pick a color.
       newState.currentPlayerIndex = playerIndex; // Stay on current player
       newState.turnActionTaken = true; // But they've played
     }
@@ -235,10 +301,6 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       newState.unoCalled = { ...newState.unoCalled, [currentPlayer.id]: false };
       newState.lastActionMessage = `${currentPlayer.name} drew a card`;
 
-      // After drawing, if the card is playable, standard UNO lets you play it immediately.
-      // For simplicity, we'll just move to the next turn, or let the player choose.
-      // Let's implement: they draw, and their turn ends unless they can play it.
-      // To keep it simple: draw ends turn.
       newState.currentPlayerIndex = getNextPlayerIndex(playerIndex, newState.players.length, newState.direction);
     }
 
@@ -278,7 +340,21 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       localStorage.removeItem(storageKey);
       setGameState(null);
     }
-  }, [storageKey]);
+    if (currentLobby?.id && currentPlayer) {
+        supabase
+            .from('lobbies')
+            .update({
+                house_rules: {
+                    ...(currentLobby.settings.houseRules || {}),
+                    unoGameState: null
+                }
+            })
+            .eq('id', currentLobby.id)
+            .then(() => {
+                window.location.reload();
+            });
+    }
+  }, [storageKey, currentLobby, currentPlayer]);
 
   return (
     <UnoContext.Provider value={{

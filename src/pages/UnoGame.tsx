@@ -72,6 +72,21 @@ const UnoGame: React.FC = () => {
     }
   };
 
+  if (!currentLobby) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center"
+        >
+          <Layers className="w-16 h-16 text-primary mx-auto mb-4 animate-pulse" />
+          <h2 className="font-display text-2xl font-bold mb-4 text-white">Connecting to Lobby...</h2>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (!gameState) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">

@@ -14,7 +14,7 @@ export interface Player {
 export interface GameSettings {
   maxPlayers: number;
   timeLimit?: number;
-  houseRules: Record<string, boolean>;
+  houseRules: Record<string, any>;
 }
 
 export interface Lobby {
