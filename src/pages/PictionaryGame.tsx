@@ -21,6 +21,8 @@ import { Input } from '@/components/ui/input';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { toast } from '@/components/ui/use-toast';
 import { Stroke, Point } from '@/lib/pictionary';
+import Confetti from '@/components/Confetti';
+import { cn } from '@/lib/utils';
 
 const COLORS = [
   '#FFFFFF', '#000000', '#FF0000', '#00FF00', '#0000FF',
@@ -199,7 +201,15 @@ const PictionaryGame: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 sm:p-8 flex flex-col">
+    <div className="min-h-screen p-4 sm:p-8 flex flex-col relative overflow-hidden bg-zinc-950">
+      <Confetti isActive={gameState.status === 'finished'} duration={5000} />
+
+      {/* Background decoration */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-5">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary rounded-full blur-[120px]" />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500 rounded-full blur-[120px]" />
+      </div>
+
       {/* Header */}
       <div className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
@@ -314,13 +324,20 @@ const PictionaryGame: React.FC = () => {
                       </motion.div>
                     )}
                     {gameState.status === 'finished' && (
-                      <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }}>
-                        <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-                        <h2 className="font-display text-4xl font-bold text-primary mb-2 italic">Game Over!</h2>
-                        <p className="text-2xl font-bold text-foreground mb-6">
-                            {gameState.players.find(p => p.id === gameState.winnerId)?.name} wins!
+                      <motion.div
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: "spring", damping: 15 }}
+                      >
+                        <div className="relative inline-block mb-4">
+                            <Trophy className="w-20 h-20 text-yellow-500 mx-auto animate-bounce" />
+                            <div className="absolute -inset-4 bg-yellow-500/20 rounded-full blur-xl -z-10" />
+                        </div>
+                        <h2 className="font-display text-5xl font-black text-primary mb-2 italic tracking-tighter uppercase">Victory!</h2>
+                        <p className="text-2xl font-bold text-white mb-8">
+                            {gameState.players.find(p => p.id === gameState.winnerId)?.name} is the Master Artist!
                         </p>
-                        <GamingButton variant="primary" onClick={resetGame}>
+                        <GamingButton variant="primary" size="lg" className="w-full h-14" onClick={resetGame}>
                             Return to Lobby
                         </GamingButton>
                       </motion.div>
@@ -333,8 +350,9 @@ const PictionaryGame: React.FC = () => {
             {/* Floating Drawer Tools */}
             {isDrawer && gameState.status === 'drawing' && (
               <motion.div
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
+                initial={{ y: 100, x: "-50%", opacity: 0 }}
+                animate={{ y: 0, x: "-50%", opacity: 1 }}
+                transition={{ type: "spring", damping: 20, stiffness: 200 }}
                 className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-3 glass-card rounded-2xl border-primary/30 z-20"
               >
                 <div className="flex items-center gap-1 border-r border-border pr-2">
@@ -403,16 +421,18 @@ const PictionaryGame: React.FC = () => {
               Guesses
             </h2>
             <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-              {gameState.guesses.map((guess) => (
+              {gameState.guesses.map((guess, idx) => (
                 <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  layout
+                  initial={{ opacity: 0, x: 20, scale: 0.9 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
                   key={guess.id}
-                  className={`p-3 rounded-xl text-sm ${
+                  className={cn(
+                    "p-3 rounded-xl text-sm transition-all",
                     guess.isCorrect
-                      ? 'bg-success/20 border border-success/30 text-success font-bold'
-                      : 'bg-muted/50 border border-border/50'
-                  }`}
+                      ? 'bg-success/20 border border-success/30 text-success font-bold shadow-[0_0_10px_rgba(var(--success),0.2)]'
+                      : 'bg-white/5 border border-white/10 text-white/80'
+                  )}
                 >
                   <span className="font-bold">{guess.playerName}: </span>
                   <span>{guess.text}</span>

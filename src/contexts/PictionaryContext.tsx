@@ -64,11 +64,12 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
 
     // Persist to Supabase
     if (currentLobby?.id && currentPlayer?.isHost) {
+      const currentHouseRules = currentLobby.settings?.houseRules || {};
       supabase
         .from('lobbies')
         .update({
           house_rules: {
-            ...(currentLobby.settings.houseRules || {}),
+            ...currentHouseRules,
             pictionaryGameState: newState
           }
         })
@@ -165,11 +166,11 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
 
   // Sync state from Supabase on mount or lobby update (initial load/refresh)
   useEffect(() => {
-    const dbState = currentLobby?.settings.houseRules?.pictionaryGameState as PictionaryGameState | undefined;
+    const dbState = currentLobby?.settings?.houseRules?.pictionaryGameState as PictionaryGameState | undefined;
     if (dbState && !gameState) {
       setGameState(dbState);
     }
-  }, [currentLobby?.settings.houseRules?.pictionaryGameState, gameState]);
+  }, [currentLobby?.settings?.houseRules?.pictionaryGameState, gameState]);
 
   const startGame = useCallback(() => {
     if (!currentLobby || !currentPlayer?.isHost) return;
@@ -387,11 +388,12 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
       setGameState(null);
     }
     if (currentLobby?.id && currentPlayer) {
+      const currentHouseRules = currentLobby.settings?.houseRules || {};
       supabase
         .from('lobbies')
         .update({
           house_rules: {
-            ...(currentLobby.settings.houseRules || {}),
+            ...currentHouseRules,
             pictionaryGameState: null
           }
         })

@@ -110,11 +110,12 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Also persist to Supabase house_rules for reliable multi-device sync/refreshes
     if (currentLobby?.id && currentPlayer) {
+      const currentHouseRules = currentLobby.settings?.houseRules || {};
         supabase
             .from('lobbies')
             .update({
                 house_rules: {
-                    ...(currentLobby.settings.houseRules || {}),
+                  ...currentHouseRules,
                     unoGameState: newState
                 }
             })
@@ -127,11 +128,11 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Sync state from Supabase on mount or lobby update (initial load/refresh)
   useEffect(() => {
-      const dbState = currentLobby?.settings.houseRules?.unoGameState as UnoGameState | undefined;
+    const dbState = currentLobby?.settings?.houseRules?.unoGameState as UnoGameState | undefined;
       if (dbState && !gameState) {
           setGameState(dbState);
       }
-  }, [currentLobby?.settings.houseRules?.unoGameState, gameState]);
+}, [currentLobby?.settings?.houseRules?.unoGameState, gameState]);
 
   const startGame = useCallback(() => {
     if (!currentLobby || !currentPlayer?.isHost) return;
@@ -341,11 +342,12 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setGameState(null);
     }
     if (currentLobby?.id && currentPlayer) {
+        const currentHouseRules = currentLobby.settings?.houseRules || {};
         supabase
             .from('lobbies')
             .update({
                 house_rules: {
-                    ...(currentLobby.settings.houseRules || {}),
+                    ...currentHouseRules,
                     unoGameState: null
                 }
             })

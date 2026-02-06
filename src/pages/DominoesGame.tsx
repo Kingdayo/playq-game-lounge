@@ -198,9 +198,14 @@ const DominoesGame: React.FC = () => {
                   return (
                     <motion.div
                       key={`${placed.tile.id}-${idx}`}
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
                       layout
+                      initial={{
+                        scale: 0.5,
+                        opacity: 0,
+                        x: idx === 0 ? -100 : 100
+                      }}
+                      animate={{ scale: 1, opacity: 1, x: 0 }}
+                      transition={{ type: "spring", damping: 15, stiffness: 200 }}
                     >
                       <DominoTileComponent
                         tile={placed.tile}
@@ -258,13 +263,15 @@ const DominoesGame: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap justify-center gap-3 py-4 min-h-[120px]">
-            <AnimatePresence>
-              {myPlayer?.hand.map((tile) => (
+            <AnimatePresence mode="popLayout">
+              {myPlayer?.hand.map((tile, idx) => (
                 <motion.div
                   key={tile.id}
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
+                  layout
+                  initial={{ y: 50, opacity: 0, rotate: -10 }}
+                  animate={{ y: 0, opacity: 1, rotate: 0 }}
+                  exit={{ scale: 0.5, opacity: 0, y: -50 }}
+                  transition={{ delay: idx * 0.03, type: "spring", damping: 20 }}
                 >
                   <DominoTileComponent
                     tile={tile}

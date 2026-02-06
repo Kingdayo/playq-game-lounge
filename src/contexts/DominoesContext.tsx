@@ -90,11 +90,11 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   // Sync from Supabase house_rules
   useEffect(() => {
-    const dbState = currentLobby?.settings.houseRules?.dominoesGameState as DominoGameState | undefined;
+    const dbState = currentLobby?.settings?.houseRules?.dominoesGameState as DominoGameState | undefined;
     if (dbState && !gameState) {
       setGameState(dbState);
     }
-  }, [currentLobby?.settings.houseRules?.dominoesGameState, gameState]);
+  }, [currentLobby?.settings?.houseRules?.dominoesGameState, gameState]);
 
   const saveGameState = useCallback(async (newState: DominoGameState) => {
     setGameState(newState);
@@ -111,12 +111,13 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
 
     if (currentLobby?.id && currentPlayer) {
+      const currentHouseRules = currentLobby.settings?.houseRules || {};
       try {
         await supabase
           .from('lobbies')
           .update({
             house_rules: {
-              ...(currentLobby.settings.houseRules || {}),
+              ...currentHouseRules,
               dominoesGameState: newState
             }
           })
@@ -137,8 +138,8 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
     }));
 
     const newState = initializeGame(currentLobby.code, players, {
-        variant: (currentLobby.settings.houseRules?.variant as 'draw' | 'block') || 'draw',
-        setSize: (currentLobby.settings.houseRules?.setSize as 6 | 9 | 12) || 6
+        variant: (currentLobby.settings?.houseRules?.variant as 'draw' | 'block') || 'draw',
+        setSize: (currentLobby.settings?.houseRules?.setSize as 6 | 9 | 12) || 6
     });
     saveGameState(newState);
 
@@ -310,12 +311,13 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
       localStorage.removeItem(storageKey);
     }
     if (currentLobby?.id && currentPlayer?.isHost) {
+      const currentHouseRules = currentLobby.settings?.houseRules || {};
       try {
         await supabase
           .from('lobbies')
           .update({
             house_rules: {
-              ...(currentLobby.settings.houseRules || {}),
+              ...currentHouseRules,
               dominoesGameState: null
             }
           })

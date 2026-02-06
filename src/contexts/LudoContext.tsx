@@ -103,11 +103,12 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     if (currentLobby?.id && currentPlayer) {
+        const currentHouseRules = currentLobby.settings?.houseRules || {};
         supabase
             .from('lobbies')
             .update({
                 house_rules: {
-                    ...(currentLobby.settings.houseRules || {}),
+                    ...currentHouseRules,
                     ludoGameState: newState
                 }
             })
@@ -119,11 +120,11 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [storageKey, channelRef, currentLobby, currentPlayer]);
 
   useEffect(() => {
-      const dbState = currentLobby?.settings.houseRules?.ludoGameState as LudoGameState | undefined;
-      if (dbState && !gameState) {
-          setGameState(dbState);
-      }
-  }, [currentLobby?.settings.houseRules?.ludoGameState, gameState]);
+    const dbState = currentLobby?.settings?.houseRules?.ludoGameState as LudoGameState | undefined;
+    if (dbState && !gameState) {
+      setGameState(dbState);
+    }
+  }, [currentLobby?.settings?.houseRules?.ludoGameState, gameState]);
 
   const startGame = useCallback(() => {
     if (!currentLobby || !currentPlayer?.isHost) return;
@@ -209,11 +210,12 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setGameState(null);
     }
     if (currentLobby?.id && currentPlayer) {
+        const currentHouseRules = currentLobby.settings?.houseRules || {};
         supabase
             .from('lobbies')
             .update({
                 house_rules: {
-                    ...(currentLobby.settings.houseRules || {}),
+                    ...currentHouseRules,
                     ludoGameState: null
                 }
             })
