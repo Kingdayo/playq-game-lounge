@@ -17,6 +17,7 @@ import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import VoiceChat from '@/components/VoiceChat';
+import VoiceControls from '@/components/VoiceControls';
 import ChatPanel from '@/components/ChatPanel';
 import { useGame } from '@/contexts/GameContext';
 import { useChat } from '@/contexts/ChatContext';
@@ -33,7 +34,7 @@ const Lobby: React.FC = () => {
   const navigate = useNavigate();
   const { currentLobby, currentPlayer, setPlayerReady, leaveLobby, updateLobbySettings, startGame: startLobbyGame } = useGame();
   const { sendMessage, roomMessages, createLobbyRoom } = useChat();
-  const { connect: connectVoice, disconnect: disconnectVoice, participants: voiceParticipants } = useVoice();
+  const { connect: connectVoice, disconnect: disconnectVoice, participants: voiceParticipants, resumeAudio } = useVoice();
   const { startGame: startUnoGame } = useUno();
   const { startGame: startLudoGame } = useLudo();
   const { startGame: startDominoesGame } = useDominoes();
@@ -63,12 +64,6 @@ const Lobby: React.FC = () => {
     if (code && currentPlayer && currentLobby) {
       connectVoice(`voice-lobby-${code}`, currentPlayer);
     }
-    return () => {
-      // We don't necessarily want to disconnect here if we are transitioning to a game
-      // But the requirement says "Clean up voice channels when lobbies are closed"
-      // Actually, if we leave the lobby (navigate away), we should probably disconnect
-      // UNLESS we are going to a game page with the same code.
-    };
   }, [code, currentPlayer, currentLobby, connectVoice]);
 
   // Handle game start synchronization
@@ -170,7 +165,8 @@ const Lobby: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 sm:p-8">
+    <div className="min-h-screen p-4 sm:p-8" onClick={resumeAudio} onTouchStart={resumeAudio}>
+      <VoiceControls />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

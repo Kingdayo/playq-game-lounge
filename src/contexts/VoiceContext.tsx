@@ -14,6 +14,7 @@ interface VoiceContextType {
   toggleMute: () => void;
   setVolume: (volume: number) => void;
   error: string | null;
+  resumeAudio: () => Promise<void>;
 }
 
 const VoiceContext = createContext<VoiceContextType | undefined>(undefined);
@@ -38,23 +39,30 @@ export const useVoice = () => {
 function AudioElement({ stream, volume }: { stream: MediaStream, volume: number }) {
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  const attemptPlay = useCallback(async () => {
+    if (!audioRef.current) return;
+    try {
+      await audioRef.current.play();
+    } catch (e) {
+      console.warn('Autoplay prevented, waiting for user interaction:', e);
+      // Fallback: retry play on next body click
+      const retry = () => {
+        audioRef.current?.play().catch(() => {});
+        window.removeEventListener('click', retry);
+        window.removeEventListener('touchstart', retry);
+      };
+      window.addEventListener('click', retry);
+      window.addEventListener('touchstart', retry);
+    }
+  }, []);
+
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.srcObject = stream;
       audioRef.current.volume = volume / 100;
-
-      const playAudio = async () => {
-        try {
-          if (audioRef.current) {
-            await audioRef.current.play();
-          }
-        } catch (e) {
-          console.error('Autoplay failed:', e);
-        }
-      };
-      playAudio();
+      attemptPlay();
     }
-  }, [stream, volume]);
+  }, [stream, volume, attemptPlay]);
 
   return <audio ref={audioRef} autoPlay playsInline />;
 }
@@ -84,6 +92,14 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const audioContextRef = useRef<AudioContext | null>(null);
   const analysersRef = useRef<Record<string, AnalyserNode>>({});
 
+  const resumeAudio = useCallback(async () => {
+    if (audioContextRef.current) {
+        if (audioContextRef.current.state === 'suspended') {
+            await audioContextRef.current.resume();
+        }
+    }
+  }, []);
+
   const updateParticipantsList = useCallback(() => {
     if (!currentLobby) return;
 
@@ -94,21 +110,17 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         name: player.name,
         avatar: player.avatar,
         isSpeaking: speakingStates[player.id] || false,
-        isMuted: false,
+        isMuted: isLocal ? isMuted : false,
         stream: isLocal ? localStreamRef.current || undefined : remoteStreamsRef.current[player.id]
       };
     });
     setParticipants(list);
-  }, [currentLobby, speakingStates]);
+  }, [currentLobby, speakingStates, isMuted]);
 
   const setupAudioAnalysis = useCallback((stream: MediaStream, playerId: string) => {
     try {
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-
-      if (audioContextRef.current.state === 'suspended') {
-        audioContextRef.current.resume();
       }
 
       const source = audioContextRef.current.createMediaStreamSource(stream);
@@ -129,7 +141,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           sum += dataArray[i];
         }
         const average = sum / bufferLength;
-        const isSpeaking = average > 20;
+        const isSpeaking = average > 15; // Slightly more sensitive for mobile
 
         setSpeakingStates(prev => {
           if (prev[playerId] === isSpeaking) return prev;
@@ -201,16 +213,11 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             pc.close();
             updateParticipantsList();
 
-            // Re-attempt connection if it was a failure and we are still in the room
             if (pc.iceConnectionState === 'failed' && channelRef.current) {
-                 console.log(`Re-announcing to trigger reconnection with ${remoteId}`);
                  channelRef.current.send({
                     type: 'broadcast',
                     event: 'signal',
-                    payload: {
-                      from: localPlayerRef.current?.id,
-                      type: 'join'
-                    }
+                    payload: { from: localPlayerRef.current?.id, type: 'join' }
                   });
             }
         }
@@ -249,21 +256,15 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const handleSignal = useCallback(async ({ payload }: { payload: any }) => {
     const { from, to, type, data } = payload;
 
-    // Global signals
     if (type === 'join') {
         if (from === localPlayerRef.current?.id) return;
-        console.log(`Player ${from} joined voice lounge`);
-        // If our ID is "lower", we initiate the call
         if (localPlayerRef.current && localPlayerRef.current.id < from) {
             createPeerConnection(from, true);
         }
         return;
     }
 
-    // Direct signals
     if (to !== localPlayerRef.current?.id) return;
-
-    console.log(`Received signal ${type} from ${from}`);
 
     try {
         if (type === 'offer') {
@@ -303,7 +304,6 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [createPeerConnection, processIceQueue]);
 
   const disconnect = useCallback(() => {
-    console.log('Disconnecting voice...');
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
@@ -332,13 +332,16 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const connect = useCallback(async (roomName: string, player: Player) => {
     if (isConnected || isConnecting) return;
 
-    console.log(`Connecting to voice lobby: ${roomName} as ${player.name}`);
     setIsConnecting(true);
     setError(null);
     localPlayerRef.current = player;
     lobbyCodeRef.current = roomName;
 
     try {
+      if (!window.isSecureContext) {
+        throw new Error('Voice chat requires a secure context (HTTPS).');
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -354,34 +357,29 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       channel
         .on('broadcast', { event: 'signal' }, handleSignal)
-        .subscribe((status) => {
+        .subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
-            console.log('Subscribed to voice signaling channel');
             setIsConnected(true);
             setIsConnecting(false);
 
-            // Announce presence
             channel.send({
               type: 'broadcast',
               event: 'signal',
-              payload: {
-                from: player.id,
-                type: 'join'
-              }
+              payload: { from: player.id, type: 'join' }
             });
           } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-              console.error('Voice channel error:', status);
               setIsConnected(false);
+              setIsConnecting(false);
           }
         });
 
       channelRef.current = channel;
     } catch (err: any) {
       console.error('Failed to connect to voice:', err);
-      if (err.name === 'NotAllowedError') {
-          setError('Microphone access denied. Please allow microphone access to use voice chat.');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setError('Microphone access denied. Please check your browser settings and try again.');
       } else {
-          setError(err.message || 'Failed to access microphone');
+          setError(err.message || 'Could not access microphone.');
       }
       setIsConnecting(false);
       disconnect();
@@ -405,13 +403,31 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     updateParticipantsList();
-  }, [currentLobby, speakingStates, updateParticipantsList]);
+  }, [currentLobby, speakingStates, isMuted, updateParticipantsList]);
 
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isConnected) {
+        resumeAudio();
+        // Send a join signal again to refresh connections if any dropped
+        if (channelRef.current && localPlayerRef.current) {
+          channelRef.current.send({
+            type: 'broadcast',
+            event: 'signal',
+            payload: { from: localPlayerRef.current.id, type: 'join' }
+          });
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
       disconnect();
     };
-  }, [disconnect]);
+  }, [disconnect, isConnected, resumeAudio]);
 
   return (
     <VoiceContext.Provider
@@ -426,6 +442,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         toggleMute,
         setVolume,
         error,
+        resumeAudio
       }}
     >
       {children}
