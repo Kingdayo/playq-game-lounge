@@ -95,18 +95,46 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
   // Realtime lobby sync
   const handleLobbyUpdate = useCallback((lobby: Lobby | null) => {
-    setCurrentLobby(lobby);
-  }, []);
+    if (lobby) {
+      setCurrentLobby(lobby);
+    } else if (activeLobbyCode) {
+      // Fallback rehydration from localStorage if Supabase is unavailable
+      try {
+        const stored = localStorage.getItem('playq-lobbies');
+        if (stored) {
+          const lobbies = JSON.parse(stored);
+          if (lobbies[activeLobbyCode]) {
+            setCurrentLobby(lobbies[activeLobbyCode]);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load lobby from localStorage fallback:', e);
+      }
+      setCurrentLobby(null);
+    } else {
+      setCurrentLobby(null);
+    }
+  }, [activeLobbyCode]);
 
   useLobbySync({ lobbyCode: activeLobbyCode, onLobbyUpdate: handleLobbyUpdate });
 
   // Rehydrate lobby from URL on mount
   React.useEffect(() => {
-    const path = window.location.pathname;
-    const match = path.match(/\/(lobby|game\/uno|game\/ludo)\/([a-zA-Z0-9]+)/);
-    if (match && !activeLobbyCode) {
-      setActiveLobbyCode(match[2].toUpperCase());
-    }
+    const rehydrate = () => {
+        const path = window.location.pathname;
+        const match = path.match(/\/(lobby|game\/uno|game\/ludo|game\/dominoes|game\/pictionary)\/([a-zA-Z0-9]+)/);
+        if (match) {
+            const code = match[2].toUpperCase();
+            if (code !== activeLobbyCode) {
+                setActiveLobbyCode(code);
+            }
+        }
+    };
+
+    rehydrate();
+    window.addEventListener('popstate', rehydrate);
+    return () => window.removeEventListener('popstate', rehydrate);
   }, [activeLobbyCode]);
 
   const updateCurrentPlayer = useCallback((player: Player | null) => {

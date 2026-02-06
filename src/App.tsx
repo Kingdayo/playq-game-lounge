@@ -10,6 +10,7 @@ import { ChatProvider } from "@/contexts/ChatContext";
 import { UnoProvider } from "@/contexts/UnoContext";
 import { LudoProvider } from "@/contexts/LudoContext";
 import { DominoesProvider } from "@/contexts/DominoesContext";
+import { PictionaryProvider } from "@/contexts/PictionaryContext";
 import Layout from "@/components/Layout";
 import Index from "./pages/Index";
 import Games from "./pages/Games";
@@ -19,6 +20,7 @@ import Chat from "./pages/Chat";
 import UnoGame from "./pages/UnoGame";
 import LudoGame from "./pages/LudoGame";
 import DominoesGame from "./pages/DominoesGame";
+import PictionaryGame from "./pages/PictionaryGame";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,7 +33,8 @@ const App = () => (
           <UnoProvider>
             <LudoProvider>
               <DominoesProvider>
-                <ChatProvider>
+                <PictionaryProvider>
+                  <ChatProvider>
                   <TooltipProvider>
                     <Toaster />
                     <Sonner />
@@ -44,6 +47,7 @@ const App = () => (
                           <Route path="/game/uno/:code" element={<UnoGame />} />
                           <Route path="/game/ludo/:code" element={<LudoGame />} />
                           <Route path="/game/dominoes/:code" element={<DominoesGame />} />
+                          <Route path="/game/pictionary/:code" element={<PictionaryGame />} />
                           <Route path="/settings" element={<Settings />} />
                           <Route path="/chat" element={<Chat />} />
                         </Route>
@@ -52,6 +56,7 @@ const App = () => (
                     </BrowserRouter>
                   </TooltipProvider>
                 </ChatProvider>
+                </PictionaryProvider>
               </DominoesProvider>
             </LudoProvider>
           </UnoProvider>
