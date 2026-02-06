@@ -231,7 +231,7 @@ const LudoGame: React.FC = () => {
                                 <PlayerAvatar avatar={player.avatar} name={player.name} size="sm" />
                                 <div className={cn(
                                     "absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950",
-                                    player.color === 'red' ? 'bg-red-500' : player.color === 'green' ? 'bg-green-500' : player.color === 'yellow' ? 'bg-yellow-500' : player.color === 'blue' ? 'bg-blue-500'
+                                    player.color === 'red' ? 'bg-red-500' : player.color === 'green' ? 'bg-green-500' : player.color === 'yellow' ? 'bg-yellow-500' : 'bg-blue-500'
                                 )} />
                             </div>
                             <div className="flex-1 min-w-0">
