@@ -161,7 +161,7 @@ const DominoesGame: React.FC = () => {
               <PlayerAvatar
                 avatar={player.avatar}
                 name={player.name}
-                isSpeaking={voiceParticipants.some(vp => vp.name === player.name && vp.isSpeaking)}
+                isSpeaking={voiceParticipants.some(vp => vp.id === player.id && vp.isSpeaking)}
                 size="sm"
               />
               <div className="absolute -top-1 -right-1 bg-zinc-900 border border-white/20 rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -236,7 +236,7 @@ const DominoesGame: React.FC = () => {
               <PlayerAvatar
                 avatar={myPlayer?.avatar || ''}
                 name={myPlayer?.name || ''}
-                isSpeaking={voiceParticipants.some(vp => vp.name === myPlayer?.name && vp.isSpeaking)}
+                isSpeaking={voiceParticipants.some(vp => vp.id === myPlayer?.id && vp.isSpeaking)}
                 size="sm"
                 isReady
               />

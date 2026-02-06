@@ -172,7 +172,7 @@ const UnoGame: React.FC = () => {
                         <PlayerAvatar
                             avatar={player.avatar}
                             name={player.name}
-                            isSpeaking={voiceParticipants.some(p => p.name === player.name && p.isSpeaking)}
+                            isSpeaking={voiceParticipants.some(p => p.id === player.id && p.isSpeaking)}
                             size="md"
                         />
                         {gameState.currentPlayerIndex === gameState.players.findIndex(p => p.id === player.id) && (

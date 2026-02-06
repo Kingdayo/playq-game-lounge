@@ -288,7 +288,7 @@ const Lobby: React.FC = () => {
                       name={player.name}
                       isReady={player.isReady}
                       isHost={player.isHost}
-                      isSpeaking={voiceParticipants.some(p => p.name === player.name && p.isSpeaking)}
+                      isSpeaking={voiceParticipants.some(p => p.id === player.id && p.isSpeaking)}
                       size="lg"
                     />
                   </motion.div>
