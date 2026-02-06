@@ -269,15 +269,31 @@ const UnoGame: React.FC = () => {
 
              {/* Action Bar */}
              <div className="mt-8 flex justify-center gap-4">
-                {myPlayer?.hand.length === 2 && (
-                    <GamingButton
-                        variant="warning"
-                        onClick={callUno}
-                        disabled={gameState.unoCalled[myPlayer.id]}
-                    >
-                        Call UNO!
-                    </GamingButton>
-                )}
+                <AnimatePresence>
+                    {myPlayer?.hand.length === 2 && (
+                        <motion.div
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{
+                                scale: [1, 1.1, 1],
+                                opacity: 1,
+                            }}
+                            transition={{
+                                scale: { repeat: Infinity, duration: 1 },
+                                initial: { type: "spring", damping: 15 }
+                            }}
+                            exit={{ scale: 0, opacity: 0 }}
+                        >
+                            <GamingButton
+                                variant="warning"
+                                onClick={callUno}
+                                disabled={gameState.unoCalled[myPlayer.id]}
+                                pulseEffect={!gameState.unoCalled[myPlayer.id]}
+                            >
+                                Call UNO!
+                            </GamingButton>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
              </div>
         </div>
       </div>
@@ -291,17 +307,28 @@ const UnoGame: React.FC = () => {
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
             >
-                <div className="glass-card p-8 rounded-3xl max-w-sm w-full text-center">
-                    <h3 className="font-display text-2xl font-bold mb-6">Choose a Color</h3>
+                <motion.div
+                    initial={{ scale: 0.5, y: 100 }}
+                    animate={{ scale: 1, y: 0 }}
+                    exit={{ scale: 0.5, y: 100 }}
+                    className="glass-card p-8 rounded-[2rem] max-w-sm w-full text-center border-t-4 border-primary"
+                >
+                    <h3 className="font-display text-2xl font-bold mb-6 gradient-text">Choose a Color</h3>
                     <div className="grid grid-cols-2 gap-4">
-                        {(['red', 'blue', 'green', 'yellow'] as UnoColor[]).map(color => (
+                        {(['red', 'blue', 'green', 'yellow'] as UnoColor[]).map((color, idx) => (
                             <motion.button
                                 key={color}
-                                whileHover={{ scale: 1.05 }}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: idx * 0.1 }}
+                                whileHover={{
+                                    scale: 1.05,
+                                    boxShadow: `0 0 20px ${color === 'yellow' ? 'rgba(250, 204, 21, 0.4)' : `rgba(var(--${color}), 0.4)`}`
+                                }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleSelectColor(color)}
                                 className={cn(
-                                    "h-24 rounded-2xl border-4 border-white/20 shadow-xl flex items-center justify-center",
+                                    "h-24 rounded-2xl border-4 border-white/10 shadow-xl flex items-center justify-center transition-all",
                                     colorMap[color]
                                 )}
                             >
@@ -309,7 +336,7 @@ const UnoGame: React.FC = () => {
                             </motion.button>
                         ))}
                     </div>
-                </div>
+                </motion.div>
             </motion.div>
         )}
       </AnimatePresence>

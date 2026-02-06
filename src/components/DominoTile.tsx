@@ -83,12 +83,20 @@ const DominoTile: React.FC<DominoTileProps> = ({
 
   return (
     <motion.div
-      whileHover={isPlayable && !disabled ? { scale: 1.05, y: -5 } : {}}
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.8, opacity: 0 }}
+      whileHover={isPlayable && !disabled ? {
+        scale: 1.1,
+        y: -10,
+        rotateZ: 2,
+        boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 0 15px rgba(var(--primary), 0.3)"
+      } : {}}
       whileTap={isPlayable && !disabled ? { scale: 0.95 } : {}}
       onClick={() => !disabled && onClick?.()}
       style={{ rotate: rotation }}
       className={cn(
-        "relative flex flex-col bg-stone-100 rounded-md border-2 border-stone-300 shadow-lg cursor-pointer transition-colors overflow-hidden",
+        "relative flex flex-col bg-stone-100 rounded-md border-2 border-stone-300 shadow-lg cursor-pointer transition-all overflow-hidden",
         isHorizontal ? "flex-row" : "flex-col",
         sizeClasses[size],
         isPlayable && "ring-2 ring-primary ring-offset-2 ring-offset-zinc-950",

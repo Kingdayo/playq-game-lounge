@@ -43,7 +43,11 @@ const UnoCard: React.FC<UnoCardProps> = ({
 
   if (isBack) {
     return (
-      <div
+      <motion.div
+        initial={{ rotateY: 180, opacity: 0 }}
+        animate={{ rotateY: 0, opacity: 1 }}
+        exit={{ rotateY: -180, opacity: 0 }}
+        transition={{ type: "spring", damping: 20, stiffness: 100 }}
         className={cn(
           "relative rounded-xl border-4 border-white shadow-xl overflow-hidden bg-zinc-900 flex items-center justify-center",
           sizeClasses[size]
@@ -52,7 +56,7 @@ const UnoCard: React.FC<UnoCardProps> = ({
         <div className="absolute inset-2 border-2 border-dashed border-white/20 rounded-lg flex items-center justify-center">
             <span className="font-display font-black text-white italic transform -rotate-45 scale-150">UNO</span>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
@@ -69,7 +73,15 @@ const UnoCard: React.FC<UnoCardProps> = ({
 
   return (
     <motion.div
-      whileHover={isPlayable && !disabled ? { y: -20, scale: 1.05 } : {}}
+      layout
+      initial={{ scale: 0.5, opacity: 0, y: 50 }}
+      animate={{ scale: 1, opacity: 1, y: 0 }}
+      exit={{ scale: 0.5, opacity: 0, y: -50 }}
+      whileHover={isPlayable && !disabled ? {
+        y: -30,
+        scale: 1.1,
+        boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1), 0 0 20px rgba(255, 255, 255, 0.4)"
+      } : {}}
       whileTap={isPlayable && !disabled ? { scale: 0.95 } : {}}
       onClick={!disabled && isPlayable ? onClick : undefined}
       className={cn(

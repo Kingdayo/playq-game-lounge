@@ -230,7 +230,12 @@ const LudoGame: React.FC = () => {
                             )}
                         >
                             <div className="relative">
-                                <PlayerAvatar avatar={player.avatar} name={player.name} size="sm" />
+                                <motion.div
+                                    animate={gameState.currentPlayerIndex === idx ? { scale: [1, 1.1, 1] } : {}}
+                                    transition={{ repeat: Infinity, duration: 2 }}
+                                >
+                                    <PlayerAvatar avatar={player.avatar} name={player.name} size="sm" />
+                                </motion.div>
                                 <div className={cn(
                                     "absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950",
                                     player.color === 'red' ? 'bg-red-500' : player.color === 'green' ? 'bg-green-500' : player.color === 'yellow' ? 'bg-yellow-500' : 'bg-blue-500'
@@ -287,21 +292,28 @@ const LudoGame: React.FC = () => {
                         {gameState.isRolling ? (
                             <motion.div
                                 key="rolling"
-                                initial={{ rotate: 0 }}
-                                animate={{ rotate: 360 }}
-                                transition={{ repeat: Infinity, duration: 0.5, ease: "linear" }}
-                                className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center border-2 border-primary/50"
+                                initial={{ rotateX: 0, rotateY: 0 }}
+                                animate={{
+                                    rotateX: [0, 90, 180, 270, 360],
+                                    rotateY: [0, 180, 0, 180, 360],
+                                    scale: [1, 1.1, 1]
+                                }}
+                                transition={{ repeat: Infinity, duration: 0.6, ease: "easeInOut" }}
+                                className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center border-2 border-primary/50 shadow-[0_0_20px_rgba(var(--primary),0.3)]"
                             >
                                 <Dices className="w-10 h-10 text-primary" />
                             </motion.div>
                         ) : (
                             <motion.div
                                 key={gameState.diceValue || 'empty'}
-                                initial={{ scale: 0.8, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
+                                initial={{ scale: 0.5, rotate: -45, opacity: 0 }}
+                                animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                                transition={{ type: "spring", damping: 12, stiffness: 200 }}
                                 className={cn(
-                                    "w-16 h-16 rounded-xl flex items-center justify-center border-2 text-3xl font-black shadow-lg",
-                                    gameState.diceValue ? "bg-white text-zinc-950 border-white" : "bg-white/5 text-white/20 border-white/10"
+                                    "w-16 h-16 rounded-xl flex items-center justify-center border-2 text-3xl font-black shadow-2xl transition-all",
+                                    gameState.diceValue
+                                        ? "bg-white text-zinc-950 border-white ring-4 ring-primary/20"
+                                        : "bg-white/5 text-white/20 border-white/10"
                                 )}
                             >
                                 {gameState.diceValue || '?'}
@@ -417,10 +429,15 @@ const Token: React.FC<TokenProps> = ({ token, isSelectable, onClick, isStacked }
     return (
         <motion.div
             layoutId={token.id}
+            transition={{ type: "spring", damping: 20, stiffness: 300 }}
             role="button"
             tabIndex={isSelectable ? 0 : -1}
             aria-label={`Token ${token.index + 1} (${token.color})`}
-            whileHover={isSelectable ? { scale: 1.2 } : {}}
+            whileHover={isSelectable ? {
+                scale: 1.2,
+                z: 10,
+                filter: "brightness(1.2) drop-shadow(0 0 8px currentColor)"
+            } : {}}
             whileTap={isSelectable ? { scale: 0.9 } : {}}
             onClick={(e) => {
                 if (isSelectable) {
@@ -430,12 +447,21 @@ const Token: React.FC<TokenProps> = ({ token, isSelectable, onClick, isStacked }
             }}
             onKeyDown={handleKeyDown}
             className={cn(
-                "w-4 h-4 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full border-2 border-white/40 shadow-lg cursor-pointer transition-shadow focus:outline-none",
+                "w-4 h-4 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full border-2 border-white/40 shadow-lg cursor-pointer focus:outline-none relative group",
                 bgColor,
-                isSelectable && "ring-4 ring-primary ring-offset-2 ring-offset-zinc-900 z-10 animate-pulse",
+                isSelectable && "ring-4 ring-primary ring-offset-2 ring-offset-zinc-900 z-10",
                 isStacked && "w-3 h-3 sm:w-6 sm:h-6 md:w-7 md:h-7 border-1"
             )}
-        />
+        >
+            {isSelectable && (
+                <motion.div
+                    layoutId={`${token.id}-glow`}
+                    className="absolute -inset-2 bg-primary/30 rounded-full blur-md -z-10"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                />
+            )}
+        </motion.div>
     );
 };
 
