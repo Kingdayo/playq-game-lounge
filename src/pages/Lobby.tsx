@@ -21,6 +21,7 @@ import ChatPanel from '@/components/ChatPanel';
 import { useGame } from '@/contexts/GameContext';
 import { useChat } from '@/contexts/ChatContext';
 import { useUno } from '@/contexts/UnoContext';
+import { useLudo } from '@/contexts/LudoContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
@@ -30,6 +31,7 @@ const Lobby: React.FC = () => {
   const { currentLobby, currentPlayer, setPlayerReady, leaveLobby, startGame: startLobbyGame } = useGame();
   const { sendMessage, roomMessages, createLobbyRoom } = useChat();
   const { startGame: startUnoGame } = useUno();
+  const { startGame: startLudoGame } = useLudo();
   
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,6 +87,8 @@ const Lobby: React.FC = () => {
     try {
       if (currentLobby.gameType === 'uno') {
         startUnoGame();
+      } else if (currentLobby.gameType === 'ludo') {
+        startLudoGame();
       }
       await startLobbyGame();
     } catch (error) {
