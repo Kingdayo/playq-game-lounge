@@ -201,7 +201,7 @@ const PictionaryGame: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 sm:p-8 flex flex-col relative overflow-hidden bg-zinc-950">
+    <div className="min-h-screen p-4 sm:p-8 flex flex-col relative overflow-y-auto bg-zinc-950">
       <Confetti isActive={gameState.status === 'finished'} duration={5000} />
 
       {/* Background decoration */}

@@ -116,7 +116,7 @@ const UnoGame: React.FC = () => {
   const topCard = gameState.discardPile[gameState.discardPile.length - 1];
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-zinc-950 p-4 sm:p-8">
+    <div className="min-h-screen relative overflow-y-auto bg-zinc-950 p-4 sm:p-8">
       <Confetti isActive={gameState.status === 'finished'} duration={5000} />
 
       {/* Background decoration */}
@@ -154,7 +154,7 @@ const UnoGame: React.FC = () => {
       </div>
 
       {/* Game Area */}
-      <div className="relative z-10 max-w-6xl mx-auto h-[calc(100vh-200px)] flex flex-col justify-between">
+      <div className="relative z-10 max-w-6xl mx-auto min-h-[calc(100vh-200px)] flex flex-col justify-between">
 
         {/* Opponents */}
         <div className="flex justify-center gap-8 py-4">
