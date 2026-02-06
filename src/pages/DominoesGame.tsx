@@ -116,7 +116,7 @@ const DominoesGame: React.FC = () => {
   const otherPlayers = gameState.players.filter(p => p.id !== currentPlayer?.id);
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-zinc-950 p-4 sm:p-8 flex flex-col">
+    <div className="min-h-screen relative overflow-y-auto bg-zinc-950 p-4 sm:p-8 flex flex-col">
       <Confetti isActive={gameState.status === 'finished'} duration={5000} />
 
       {/* Header */}
