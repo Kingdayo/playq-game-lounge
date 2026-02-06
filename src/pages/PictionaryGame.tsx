@@ -55,10 +55,13 @@ const PictionaryCanvas: React.FC<{
       if (stroke.points.length < 2) return;
       ctx.beginPath();
       ctx.strokeStyle = stroke.tool === 'eraser' ? '#1A1A1A' : stroke.color;
-      ctx.lineWidth = stroke.width;
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+      // Scale line width relative to canvas size for consistency
+      const scaleFactor = ctx.canvas.width / 800; // 800 is our base reference width
+      ctx.lineWidth = stroke.width * scaleFactor;
+
+      ctx.moveTo(stroke.points[0].x * ctx.canvas.width, stroke.points[0].y * ctx.canvas.height);
       for (let i = 1; i < stroke.points.length; i++) {
-        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+        ctx.lineTo(stroke.points[i].x * ctx.canvas.width, stroke.points[i].y * ctx.canvas.height);
       }
       ctx.stroke();
     });
@@ -108,8 +111,8 @@ const PictionaryCanvas: React.FC<{
     }
 
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
+      x: (clientX - rect.left) / rect.width,
+      y: (clientY - rect.top) / rect.height
     };
   };
 
@@ -219,7 +222,7 @@ const PictionaryGame: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen p-4 sm:p-8 flex flex-col relative overflow-y-auto bg-zinc-950"
+      className="min-h-screen px-2 py-4 sm:p-8 flex flex-col relative overflow-y-auto bg-zinc-950"
       onClick={resumeAudio}
       onTouchStart={resumeAudio}
     >
@@ -273,9 +276,9 @@ const PictionaryGame: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0">
+      <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 flex-1 min-h-0">
         {/* Scoreboard */}
-        <div className="lg:col-span-1 space-y-4 flex flex-col min-h-0">
+        <div className="lg:col-span-1 space-y-4 flex flex-col min-h-0 h-[140px] lg:h-auto">
           <div className="glass-card p-4 rounded-2xl flex-1 overflow-hidden flex flex-col">
             <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
@@ -312,8 +315,8 @@ const PictionaryGame: React.FC = () => {
         </div>
 
         {/* Canvas Area */}
-        <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
-          <div className="glass-card relative rounded-2xl overflow-hidden flex-1 bg-[#1A1A1A] border-2 border-primary/20 shadow-2xl shadow-primary/5">
+        <div className="lg:col-span-2 flex flex-col gap-4 min-h-0 h-[450px] lg:h-auto">
+          <div className="glass-card relative rounded-2xl overflow-hidden flex-1 bg-[#1A1A1A] border-2 border-primary/20 shadow-2xl shadow-primary/5 aspect-square lg:aspect-auto">
             <PictionaryCanvas
               isDrawer={isDrawer && gameState.status === 'drawing'}
               strokes={gameState.strokes}
@@ -444,7 +447,7 @@ const PictionaryGame: React.FC = () => {
         </div>
 
         {/* Guesses / Chat */}
-        <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
+        <div className="lg:col-span-1 flex flex-col gap-4 min-h-0 h-[300px] lg:h-auto">
           <div className="glass-card p-4 rounded-2xl flex-1 flex flex-col min-h-0">
             <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
