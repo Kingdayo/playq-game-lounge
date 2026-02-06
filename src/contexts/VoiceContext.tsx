@@ -3,8 +3,8 @@ import Peer, { MediaConnection } from 'peerjs';
 import { useGame } from './GameContext';
 import { Player, VoiceParticipant } from '@/types/game';
 
-const PEER_PREFIX = 'playq_voice';
-const DELIMITER = ':::';
+const PEER_PREFIX = 'playq';
+const DELIMITER = '_';
 
 interface VoiceContextType {
   isConnected: boolean;
@@ -203,7 +203,7 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
   }, [setupAudioAnalysis]);
 
   const connect = useCallback(async (roomName: string, player: Player) => {
-    if (peerRef.current || isConnecting) return;
+    if (peerRef.current || isConnecting || !roomName || !player?.id) return;
 
     setIsConnecting(true);
     setError(null);
@@ -368,7 +368,7 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     >
       {children}
       <div className="hidden">
-        <RemoteAudioStreams participants={participants} localId={peerRef.current?.id.split('-').pop()} volume={volume} />
+        <RemoteAudioStreams participants={participants} localId={peerRef.current?.id.split(DELIMITER).pop()} volume={volume} />
       </div>
     </VoiceContext.Provider>
   );
