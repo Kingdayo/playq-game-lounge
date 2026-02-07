@@ -104,7 +104,7 @@ const Lobby: React.FC = () => {
     if (messages.length > prevMessagesLengthRef.current) {
       const lastMessage = messages[messages.length - 1];
       if (prevMessagesLengthRef.current > 0 && lastMessage.sender !== currentPlayer?.name) {
-        playSound('card');
+        playSound('chat');
       }
     }
     prevMessagesLengthRef.current = messages.length;
