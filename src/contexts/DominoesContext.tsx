@@ -144,7 +144,7 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
             house_rules: {
               ...currentHouseRules,
               dominoesGameState: newState
-            } as any
+            }
           })
           .eq('id', currentLobby.id);
       } catch (err) {

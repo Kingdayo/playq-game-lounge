@@ -134,7 +134,7 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 house_rules: {
                   ...currentHouseRules,
                     unoGameState: newState
-                } as any
+                }
             })
             .eq('id', currentLobby.id)
             .then(({ error }) => {

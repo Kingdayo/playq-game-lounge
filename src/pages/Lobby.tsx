@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -20,7 +20,7 @@ import VoiceChat from '@/components/VoiceChat';
 import VoiceControls from '@/components/VoiceControls';
 import ChatPanel from '@/components/ChatPanel';
 import { useGame } from '@/contexts/GameContext';
-import { useLobbyChat } from '@/hooks/useLobbyChat';
+import { useChat } from '@/contexts/ChatContext';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useSound } from '@/contexts/SoundContext';
 import { useUno } from '@/contexts/UnoContext';
@@ -35,7 +35,7 @@ const Lobby: React.FC = () => {
   const navigate = useNavigate();
   const { currentLobby, currentPlayer, setPlayerReady, leaveLobby, updateLobbySettings, startGame: startLobbyGame } = useGame();
   const { playSound, playBGM } = useSound();
-  const { messages: lobbyChatMessages, sendMessage: sendLobbyMessage } = useLobbyChat(code);
+  const { sendMessage, roomMessages, createLobbyRoom } = useChat();
   const { connect: connectVoice, disconnect: disconnectVoice, participants: voiceParticipants, resumeAudio } = useVoice();
   const { startGame: startUnoGame } = useUno();
   const { startGame: startLudoGame } = useLudo();
@@ -49,13 +49,20 @@ const Lobby: React.FC = () => {
   const prevReadyStatesRef = React.useRef<Record<string, boolean>>({});
   const prevMessagesLengthRef = React.useRef(0);
 
-  const messages = lobbyChatMessages;
+  const roomId = code ? `lobby-${code}` : '';
+  const messages = useMemo(() => roomId ? roomMessages[roomId] || [] : [], [roomId, roomMessages]);
 
   useEffect(() => {
     // Simulate loading
     const timer = setTimeout(() => setIsLoading(false), 1500);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (code) {
+      createLobbyRoom(code);
+    }
+  }, [code, createLobbyRoom]);
 
   // Auto-connect to voice
   useEffect(() => {
@@ -119,8 +126,14 @@ const Lobby: React.FC = () => {
   };
 
   const handleSendMessage = (content: string) => {
-    if (!currentPlayer) return;
-    sendLobbyMessage(content);
+    if (!currentPlayer || !roomId) return;
+
+    sendMessage(
+      roomId,
+      content,
+      currentPlayer.name,
+      currentPlayer.avatar
+    );
   };
 
   const handleStartGame = async () => {
@@ -428,7 +441,7 @@ const Lobby: React.FC = () => {
                     <Label className="text-xs text-muted-foreground uppercase">Variant</Label>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
-                        variant={currentLobby.settings.houseRules?.variant !== 'block' ? 'default' : 'outline'}
+                        variant={currentLobby.settings.houseRules?.variant !== 'block' ? 'primary' : 'outline'}
                         size="sm"
                         className="text-xs h-8"
                         onClick={() => updateLobbySettings({ houseRules: { ...currentLobby.settings.houseRules, variant: 'draw' } })}
@@ -437,7 +450,7 @@ const Lobby: React.FC = () => {
                         Draw
                       </Button>
                       <Button
-                        variant={currentLobby.settings.houseRules?.variant === 'block' ? 'default' : 'outline'}
+                        variant={currentLobby.settings.houseRules?.variant === 'block' ? 'primary' : 'outline'}
                         size="sm"
                         className="text-xs h-8"
                         onClick={() => updateLobbySettings({ houseRules: { ...currentLobby.settings.houseRules, variant: 'block' } })}
@@ -454,7 +467,7 @@ const Lobby: React.FC = () => {
                       {[6, 9, 12].map((size) => (
                         <Button
                           key={size}
-                          variant={(currentLobby.settings.houseRules?.setSize || 6) === size ? 'default' : 'outline'}
+                          variant={(currentLobby.settings.houseRules?.setSize || 6) === size ? 'primary' : 'outline'}
                           size="sm"
                           className="text-xs h-8"
                           onClick={() => updateLobbySettings({ houseRules: { ...currentLobby.settings.houseRules, setSize: size } })}

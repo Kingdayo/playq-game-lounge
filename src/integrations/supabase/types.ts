@@ -14,100 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      chat_messages: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          is_system: boolean | null
-          room_id: string
-          sender_avatar: string
-          sender_id: string
-          sender_name: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          is_system?: boolean | null
-          room_id: string
-          sender_avatar: string
-          sender_id: string
-          sender_name: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          is_system?: boolean | null
-          room_id?: string
-          sender_avatar?: string
-          sender_id?: string
-          sender_name?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chat_messages_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "chat_rooms"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      chat_participants: {
-        Row: {
-          id: string
-          joined_at: string
-          player_id: string
-          room_id: string
-        }
-        Insert: {
-          id?: string
-          joined_at?: string
-          player_id: string
-          room_id: string
-        }
-        Update: {
-          id?: string
-          joined_at?: string
-          player_id?: string
-          room_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chat_participants_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "chat_rooms"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      chat_rooms: {
-        Row: {
-          created_at: string
-          created_by: string
-          id: string
-          name: string | null
-          type: string
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          id?: string
-          name?: string | null
-          type?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          id?: string
-          name?: string | null
-          type?: string
-        }
-        Relationships: []
-      }
       lobbies: {
         Row: {
           code: string
@@ -184,33 +90,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      profiles: {
-        Row: {
-          avatar: string
-          created_at: string
-          id: string
-          last_seen: string | null
-          name: string
-          player_id: string
-        }
-        Insert: {
-          avatar: string
-          created_at?: string
-          id?: string
-          last_seen?: string | null
-          name: string
-          player_id: string
-        }
-        Update: {
-          avatar?: string
-          created_at?: string
-          id?: string
-          last_seen?: string | null
-          name?: string
-          player_id?: string
-        }
-        Relationships: []
       }
     }
     Views: {

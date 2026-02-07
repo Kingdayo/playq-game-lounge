@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import {
   SkipForward,
   RefreshCw,
-  Plus,
+  Plus2,
   Zap,
   Circle
 } from 'lucide-react';
