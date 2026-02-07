@@ -85,7 +85,7 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
           house_rules: {
             ...currentHouseRules,
             pictionaryGameState: newState
-          }
+          } as any
         })
         .eq('id', currentLobby.id)
         .then(({ error }) => {

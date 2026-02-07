@@ -432,7 +432,7 @@ const DominoesGame: React.FC = () => {
                     {gameState.players.map(p => (
                         <div key={p.id} className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
-                                <PlayerAvatar avatar={p.avatar} name={p.name} size="xs" />
+                                <PlayerAvatar avatar={p.avatar} name={p.name} size="sm" />
                                 <span className={cn("text-sm", p.id === gameState.winnerId ? "text-white font-bold" : "text-white/60")}>{p.name}</span>
                             </div>
                             <span className="text-white font-mono">{p.hand.reduce((sum, t) => sum + t.sideA + t.sideB, 0)} Pips</span>
