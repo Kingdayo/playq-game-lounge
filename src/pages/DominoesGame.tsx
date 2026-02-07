@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext';
 import { useDominoes } from '@/contexts/DominoesContext';
-import { useChat } from '@/contexts/ChatContext';
+import { useLobbyChat } from '@/hooks/useLobbyChat';
 import DominoTileComponent from '@/components/DominoTile';
 import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ const DominoesGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer, leaveLobby } = useGame();
-  const { sendMessage, roomMessages, createLobbyRoom } = useChat();
+  const { messages: lobbyChatMessages, sendMessage: sendLobbyMessage } = useLobbyChat(code);
   const { participants: voiceParticipants, resumeAudio, connect: connectVoice, disconnect: disconnectVoice } = useVoice();
   const {
     gameState,
@@ -59,24 +59,11 @@ const DominoesGame: React.FC = () => {
   const [showPlacementChoice, setShowPlacementChoice] = useState(false);
   const [showChat, setShowChat] = useState(false);
 
-  const roomId = code ? `lobby-${code}` : '';
-  const messages = roomId ? roomMessages[roomId] || [] : [];
-
-  useEffect(() => {
-    if (code) {
-      createLobbyRoom(code);
-    }
-  }, [code, createLobbyRoom]);
+  const messages = lobbyChatMessages;
 
   const handleSendMessage = (content: string) => {
-    if (!currentPlayer || !roomId) return;
-
-    sendMessage(
-      roomId,
-      content,
-      currentPlayer.name,
-      currentPlayer.avatar
-    );
+    if (!currentPlayer) return;
+    sendLobbyMessage(content);
   };
 
   const myPlayer = gameState?.players.find(p => p.id === currentPlayer?.id);
@@ -434,7 +421,7 @@ const DominoesGame: React.FC = () => {
                     {gameState.players.map(p => (
                         <div key={p.id} className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
-                                <PlayerAvatar avatar={p.avatar} name={p.name} size="xs" />
+                                <PlayerAvatar avatar={p.avatar} name={p.name} size="sm" />
                                 <span className={cn("text-sm", p.id === gameState.winnerId ? "text-white font-bold" : "text-white/60")}>{p.name}</span>
                             </div>
                             <span className="text-white font-mono">{p.hand.reduce((sum, t) => sum + t.sideA + t.sideB, 0)} Pips</span>
