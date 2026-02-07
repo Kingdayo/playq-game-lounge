@@ -9,7 +9,8 @@ import {
   checkGuess
 } from '../lib/pictionary';
 import { useGame } from './GameContext';
-import { useSound, SoundName } from './SoundContext';
+import { useSound } from './SoundContext';
+import { SoundName } from '@/types/game';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -196,6 +197,22 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, [gameState?.status, playBGM, stopBGM]);
 
+  const startRound = useCallback(() => {
+    if (!gameStateRef.current || !currentPlayer?.isHost) return;
+
+    const newState = { ...gameStateRef.current };
+    newState.status = 'drawing';
+    newState.currentWord = getRandomWord();
+    newState.strokes = [];
+    newState.guesses = [];
+    newState.timer = 60;
+    newState.players = newState.players.map(p => ({ ...p, hasGuessedCorrectly: false }));
+    newState.lastActionMessage = `${newState.players[newState.currentDrawerIndex].name} is drawing!`;
+
+    saveGameState(newState);
+    broadcastSound('move');
+  }, [currentPlayer, saveGameState, broadcastSound]);
+
   const startGame = useCallback(() => {
     if (!currentLobby || !currentPlayer?.isHost) return;
 
@@ -216,22 +233,6 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
     }, 3000);
 
   }, [currentLobby, currentPlayer, saveGameState, broadcastSound, startRound]);
-
-  const startRound = useCallback(() => {
-    if (!gameStateRef.current || !currentPlayer?.isHost) return;
-
-    const newState = { ...gameStateRef.current };
-    newState.status = 'drawing';
-    newState.currentWord = getRandomWord();
-    newState.strokes = [];
-    newState.guesses = [];
-    newState.timer = 60;
-    newState.players = newState.players.map(p => ({ ...p, hasGuessedCorrectly: false }));
-    newState.lastActionMessage = `${newState.players[newState.currentDrawerIndex].name} is drawing!`;
-
-    saveGameState(newState);
-    broadcastSound('move');
-  }, [currentPlayer, saveGameState, broadcastSound]);
 
   const advanceTurn = useCallback(() => {
       if (!gameStateRef.current || !currentPlayer?.isHost) return;

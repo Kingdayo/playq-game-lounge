@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { DominoTile, DominoGameState, PlacedTile, initializeGame, canPlayTile, calculateHandScore, shuffle, createSet } from '../lib/dominoes';
 import { useGame } from './GameContext';
-import { useSound, SoundName } from './SoundContext';
+import { useSound } from './SoundContext';
+import { SoundName } from '@/types/game';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 

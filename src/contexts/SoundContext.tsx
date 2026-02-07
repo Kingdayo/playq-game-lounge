@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
-
-export type SoundName = 'dice' | 'card' | 'move' | 'win' | 'error' | 'success';
-export type BGMType = 'uno' | 'ludo' | 'dominoes' | 'pictionary';
+import { SoundName, BGMType } from '@/types/game';
 
 interface SoundContextType {
   soundEnabled: boolean;
