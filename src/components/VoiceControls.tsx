@@ -55,7 +55,7 @@ const VoiceControls: React.FC = () => {
         </Button>
 
         <Button
-          variant="default"
+          variant="primary"
           size="icon"
           className="rounded-full shadow-lg btn-gaming"
           onClick={() => setIsOpen(!isOpen)}

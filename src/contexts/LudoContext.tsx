@@ -127,7 +127,7 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 house_rules: {
                     ...currentHouseRules,
                     ludoGameState: newState
-                } as any
+                }
             })
             .eq('id', currentLobby.id)
             .then(({ error }) => {

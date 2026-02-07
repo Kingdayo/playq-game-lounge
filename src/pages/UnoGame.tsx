@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext';
 import { useUno } from '@/contexts/UnoContext';
-import { useLobbyChat } from '@/hooks/useLobbyChat';
+import { useChat } from '@/contexts/ChatContext';
 import UnoCard from '@/components/UnoCard';
 import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ const UnoGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer, leaveLobby } = useGame();
-  const { messages: lobbyChatMessages, sendMessage: sendLobbyMessage } = useLobbyChat(code);
+  const { sendMessage, roomMessages, createLobbyRoom } = useChat();
   const { participants: voiceParticipants, resumeAudio, connect: connectVoice, disconnect: disconnectVoice } = useVoice();
   const {
     gameState,
@@ -48,11 +48,24 @@ const UnoGame: React.FC = () => {
   const [selectedWildCardId, setSelectedWildCardId] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
 
-  const messages = lobbyChatMessages;
+  const roomId = code ? `lobby-${code}` : '';
+  const messages = roomId ? roomMessages[roomId] || [] : [];
+
+  useEffect(() => {
+    if (code) {
+      createLobbyRoom(code);
+    }
+  }, [code, createLobbyRoom]);
 
   const handleSendMessage = (content: string) => {
-    if (!currentPlayer) return;
-    sendLobbyMessage(content);
+    if (!currentPlayer || !roomId) return;
+
+    sendMessage(
+      roomId,
+      content,
+      currentPlayer.name,
+      currentPlayer.avatar
+    );
   };
 
   const handleLeave = () => {
@@ -315,11 +328,12 @@ const UnoGame: React.FC = () => {
                             }}
                             transition={{
                                 scale: { repeat: Infinity, duration: 1 },
+                                initial: { type: "spring", damping: 15 }
                             }}
                             exit={{ scale: 0, opacity: 0 }}
                         >
                             <GamingButton
-                                variant="accent"
+                                variant="warning"
                                 onClick={callUno}
                                 disabled={gameState.unoCalled[myPlayer.id]}
                                 pulseEffect={!gameState.unoCalled[myPlayer.id]}
