@@ -9,6 +9,7 @@ import {
   checkGuess
 } from '../lib/pictionary';
 import { useGame } from './GameContext';
+import { useSound, SoundName } from './SoundContext';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -36,6 +37,7 @@ export const usePictionary = () => {
 
 export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentLobby, currentPlayer } = useGame();
+  const { playSound } = useSound();
   const [gameState, setGameState] = useState<PictionaryGameState | null>(null);
   const gameStateRef = useRef<PictionaryGameState | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -47,6 +49,17 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const lobbyCode = currentLobby?.code;
   const storageKey = lobbyCode ? `playq-pictionary-game-${lobbyCode}` : null;
+
+  const broadcastSound = useCallback((soundName: SoundName) => {
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'play_sound',
+        payload: { soundName }
+      });
+    }
+    playSound(soundName);
+  }, [playSound]);
 
   const saveGameState = useCallback((newState: PictionaryGameState, broadcast = true) => {
     setGameState(newState);
@@ -91,6 +104,9 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
     channel
       .on('broadcast', { event: 'state_update' }, ({ payload }) => {
         setGameState(payload);
+      })
+      .on('broadcast', { event: 'play_sound' }, ({ payload }: { payload: { soundName: SoundName } }) => {
+        playSound(payload.soundName);
       })
       .on('broadcast', { event: 'new_stroke' }, ({ payload }) => {
         if (gameStateRef.current) {
@@ -152,7 +168,7 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [lobbyCode, currentPlayer]);
+  }, [lobbyCode, currentPlayer, playSound]);
 
   // Load game state from localStorage (Initial cache)
   useEffect(() => {
@@ -184,13 +200,14 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
     const newState = initializeGame(currentLobby.code, players);
     newState.status = 'starting';
     saveGameState(newState);
+    broadcastSound('move');
 
     // After a short delay, start the first round
     setTimeout(() => {
         startRound();
     }, 3000);
 
-  }, [currentLobby, currentPlayer, saveGameState]);
+  }, [currentLobby, currentPlayer, saveGameState, broadcastSound]);
 
   const startRound = useCallback(() => {
     if (!gameStateRef.current || !currentPlayer?.isHost) return;
@@ -205,7 +222,8 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
     newState.lastActionMessage = `${newState.players[newState.currentDrawerIndex].name} is drawing!`;
 
     saveGameState(newState);
-  }, [currentPlayer, saveGameState]);
+    broadcastSound('move');
+  }, [currentPlayer, saveGameState, broadcastSound]);
 
   const advanceTurn = useCallback(() => {
       if (!gameStateRef.current || !currentPlayer?.isHost) return;
@@ -217,6 +235,7 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
           const winner = [...newState.players].sort((a, b) => b.score - a.score)[0];
           newState.winnerId = winner.id;
           newState.lastActionMessage = `Game over! ${winner.name} wins!`;
+          broadcastSound('win');
       } else {
           newState.status = 'round_end';
           newState.currentRound += 1;
@@ -229,7 +248,7 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
       }
 
       saveGameState(newState);
-  }, [currentPlayer, saveGameState, startRound]);
+  }, [currentPlayer, saveGameState, startRound, broadcastSound]);
 
   // Timer logic (Host only)
   useEffect(() => {
@@ -329,7 +348,7 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
       timestamp: Date.now()
     };
 
-    let newState = { ...gameState };
+    const newState = { ...gameState };
     newState.guesses = [...newState.guesses, newGuess];
 
     if (isCorrect) {
@@ -346,11 +365,14 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
         return p;
       });
 
+      broadcastSound('success');
       toast({ title: "Correct!", description: "You found the word!" });
+    } else {
+      broadcastSound('error');
     }
 
     saveGameState(newState);
-  }, [gameState, currentPlayer, saveGameState]);
+  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
 
   const clearCanvas = useCallback(() => {
     if (!gameState || !currentPlayer) return;

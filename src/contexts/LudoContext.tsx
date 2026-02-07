@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { LudoGameState, initializeGame, moveToken, getLegalMoves, skipTurn } from '../lib/ludo';
 import { useGame } from './GameContext';
+import { useSound, SoundName } from './SoundContext';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -24,6 +25,7 @@ export const useLudo = () => {
 
 export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentLobby, currentPlayer } = useGame();
+  const { playSound } = useSound();
   const [gameState, setGameState] = useState<LudoGameState | null>(null);
   const gameStateRef = useRef<LudoGameState | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -49,6 +51,9 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .on('broadcast', { event: 'state_update' }, ({ payload }) => {
             console.log('Received LUDO state update:', payload);
             setGameState(payload);
+        })
+        .on('broadcast', { event: 'play_sound' }, ({ payload }: { payload: { soundName: SoundName } }) => {
+            playSound(payload.soundName);
         })
         .on('broadcast', { event: 'request_state' }, () => {
             if (currentPlayer.isHost && gameStateRef.current) {
@@ -76,7 +81,7 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
         supabase.removeChannel(channel);
     };
-  }, [lobbyCode, currentPlayer]);
+  }, [lobbyCode, currentPlayer, playSound]);
 
   // Load game state from localStorage (Initial cache)
   useEffect(() => {
@@ -87,6 +92,17 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
   }, [storageKey, gameState]);
+
+  const broadcastSound = useCallback((soundName: SoundName) => {
+    if (channelRef.current) {
+        channelRef.current.send({
+            type: 'broadcast',
+            event: 'play_sound',
+            payload: { soundName }
+        });
+    }
+    playSound(soundName);
+  }, [playSound]);
 
   const saveGameState = useCallback((newState: LudoGameState) => {
     setGameState(newState);
@@ -137,12 +153,13 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const newState = initializeGame(currentLobby.code, players);
     saveGameState(newState);
+    broadcastSound('move');
 
     toast({
       title: "Ludo Started!",
       description: "May the dice be with you!",
     });
-  }, [currentLobby, currentPlayer, saveGameState]);
+  }, [currentLobby, currentPlayer, saveGameState, broadcastSound]);
 
   const rollDice = useCallback(() => {
     if (!gameState || !currentPlayer || gameState.isRolling) return;
@@ -160,6 +177,7 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Start rolling animation - broadcast so others see it
     saveGameState({ ...gameState, isRolling: true });
+    broadcastSound('dice');
 
     // Simulate rolling delay
     setTimeout(() => {
@@ -202,7 +220,13 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const newState = moveToken(gameState, tokenId);
     saveGameState(newState);
-  }, [gameState, currentPlayer, saveGameState]);
+
+    if (newState.status === 'finished') {
+        broadcastSound('win');
+    } else {
+        broadcastSound('move');
+    }
+  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
 
   const resetGame = useCallback(() => {
     if (storageKey) {

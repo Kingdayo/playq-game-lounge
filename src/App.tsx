@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { SoundProvider } from "@/contexts/SoundContext";
 import { GameProvider } from "@/contexts/GameContext";
 import { LoadingProvider } from "@/contexts/LoadingContext";
 import { ChatProvider } from "@/contexts/ChatContext";
@@ -29,6 +30,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
+      <SoundProvider>
       <LoadingProvider>
         <GameProvider>
           <UnoProvider>
@@ -65,6 +67,7 @@ const App = () => (
           </UnoProvider>
         </GameProvider>
       </LoadingProvider>
+      </SoundProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );

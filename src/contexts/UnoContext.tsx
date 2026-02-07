@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { UnoCard, UnoColor, UnoGameState, initializeGame, isPlayable, getNextPlayerIndex, shuffle, createDeck } from '../lib/uno';
 import { useGame } from './GameContext';
+import { useSound, SoundName } from './SoundContext';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -27,6 +28,7 @@ export const useUno = () => {
 
 export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentLobby, currentPlayer } = useGame();
+  const { playSound } = useSound();
   const [gameState, setGameState] = useState<UnoGameState | null>(null);
   const gameStateRef = useRef<UnoGameState | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -52,6 +54,9 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         .on('broadcast', { event: 'state_update' }, ({ payload }) => {
             console.log('Received UNO state update:', payload);
             setGameState(payload);
+        })
+        .on('broadcast', { event: 'play_sound' }, ({ payload }: { payload: { soundName: SoundName } }) => {
+            playSound(payload.soundName);
         })
         .on('broadcast', { event: 'request_state' }, () => {
             // If I am the host, I should respond with the current state
@@ -81,7 +86,7 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => {
         supabase.removeChannel(channel);
     };
-  }, [lobbyCode, currentPlayer]);
+  }, [lobbyCode, currentPlayer, playSound]);
 
   // Load game state from localStorage (Initial cache)
   useEffect(() => {
@@ -92,6 +97,17 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }
   }, [storageKey, gameState]);
+
+  const broadcastSound = useCallback((soundName: SoundName) => {
+    if (channelRef.current) {
+        channelRef.current.send({
+            type: 'broadcast',
+            event: 'play_sound',
+            payload: { soundName }
+        });
+    }
+    playSound(soundName);
+  }, [playSound]);
 
   const saveGameState = useCallback((newState: UnoGameState) => {
     setGameState(newState);
@@ -145,6 +161,7 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const newState = initializeGame(currentLobby.code, players);
     saveGameState(newState);
+    broadcastSound('move');
 
     toast({
       title: "Game Started!",
@@ -174,7 +191,7 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     // Apply card effects
-    let newState = { ...gameState };
+    const newState = { ...gameState };
     newState.players = [...newState.players];
     const newHand = player.hand.filter(c => c.id !== cardId);
     newState.players[playerIndex] = {
@@ -197,6 +214,7 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       newState.winnerId = player.id;
       newState.lastActionMessage = `${player.name} wins!`;
       saveGameState(newState);
+      broadcastSound('win');
       return;
     }
 
@@ -242,6 +260,7 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     newState.currentPlayerIndex = nextPlayerIndex;
+    broadcastSound('card');
 
     // Wild cards need color selection
     if (card.color === 'wild') {
@@ -284,7 +303,8 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     newState.lastActionMessage = `${currentPlayer.name} chose ${color}`;
 
     saveGameState(newState);
-  }, [gameState, currentPlayer, saveGameState]);
+    broadcastSound('move');
+  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
 
   const drawCard = useCallback(() => {
     if (!gameState || !currentPlayer) return;
@@ -313,18 +333,20 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     saveGameState(newState);
-  }, [gameState, currentPlayer, saveGameState]);
+    broadcastSound('card');
+  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
 
   const callUno = useCallback(() => {
     if (!gameState || !currentPlayer) return;
 
-    let newState = { ...gameState };
+    const newState = { ...gameState };
     newState.unoCalled = { ...newState.unoCalled, [currentPlayer.id]: true };
     newState.lastActionMessage = `${currentPlayer.name} called UNO!`;
     saveGameState(newState);
+    broadcastSound('success');
 
     toast({ title: "UNO!", description: `${currentPlayer.name} called UNO!` });
-  }, [gameState, currentPlayer, saveGameState]);
+  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
 
   const catchUno = useCallback((targetPlayerId: string) => {
     if (!gameState || !currentPlayer) return;
@@ -334,14 +356,15 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const target = gameState.players[targetIndex];
     if (target.hand.length === 1 && !gameState.unoCalled[targetPlayerId]) {
-      let newState = { ...gameState };
+      const newState = { ...gameState };
       const drawnCards = newState.deck.splice(0, 2);
       newState.players[targetIndex].hand.push(...drawnCards);
       newState.lastActionMessage = `${currentPlayer.name} caught ${target.name} not saying UNO!`;
       saveGameState(newState);
+      broadcastSound('error');
       toast({ title: "Caught!", description: `${target.name} drew 2 cards.` });
     }
-  }, [gameState, currentPlayer, saveGameState]);
+  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
 
   const resetGame = useCallback(() => {
     if (storageKey) {

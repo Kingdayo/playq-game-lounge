@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { DominoTile, DominoGameState, PlacedTile, initializeGame, canPlayTile, calculateHandScore, shuffle, createSet } from '../lib/dominoes';
 import { useGame } from './GameContext';
+import { useSound, SoundName } from './SoundContext';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -25,6 +26,7 @@ export const useDominoes = () => {
 
 export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentLobby, currentPlayer } = useGame();
+  const { playSound } = useSound();
   const [gameState, setGameState] = useState<DominoGameState | null>(null);
   const gameStateRef = useRef<DominoGameState | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -49,6 +51,9 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
     channel
       .on('broadcast', { event: 'state_update' }, ({ payload }) => {
         setGameState(payload);
+      })
+      .on('broadcast', { event: 'play_sound' }, ({ payload }: { payload: { soundName: SoundName } }) => {
+        playSound(payload.soundName);
       })
       .on('broadcast', { event: 'request_state' }, () => {
         if (currentPlayer.isHost && gameStateRef.current) {
@@ -76,7 +81,7 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [lobbyCode, currentPlayer]);
+  }, [lobbyCode, currentPlayer, playSound]);
 
   // Load from localStorage
   useEffect(() => {
@@ -95,6 +100,17 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
       setGameState(dbState);
     }
   }, [currentLobby?.settings?.houseRules?.dominoesGameState, gameState]);
+
+  const broadcastSound = useCallback((soundName: SoundName) => {
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'play_sound',
+        payload: { soundName }
+      });
+    }
+    playSound(soundName);
+  }, [playSound]);
 
   const saveGameState = useCallback(async (newState: DominoGameState) => {
     setGameState(newState);
@@ -142,12 +158,13 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
         setSize: (currentLobby.settings?.houseRules?.setSize as 6 | 9 | 12) || 6
     });
     saveGameState(newState);
+    broadcastSound('move');
 
     toast({
       title: "Dominoes Started!",
       description: "Match those tiles!",
     });
-  }, [currentLobby, currentPlayer, saveGameState]);
+  }, [currentLobby, currentPlayer, saveGameState, broadcastSound]);
 
   const playTile = useCallback((tileId: string, side: 'left' | 'right') => {
     if (!gameState || !currentPlayer) return;
@@ -165,7 +182,7 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
     const tile = player.hand[tileIndex];
     const { leftEnd, rightEnd } = gameState.board;
 
-    let newState = { ...gameState };
+    const newState = { ...gameState };
     newState.players = [...newState.players];
     newState.board = { ...newState.board, tiles: [...newState.board.tiles] };
 
@@ -229,7 +246,12 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
 
     saveGameState(newState);
-  }, [gameState, currentPlayer, saveGameState]);
+    if (newState.status === 'finished') {
+      broadcastSound('win');
+    } else {
+      broadcastSound('card');
+    }
+  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
 
   const drawTile = useCallback(() => {
     if (!gameState || !currentPlayer) return;
@@ -267,7 +289,8 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
 
     saveGameState(newState);
-  }, [gameState, currentPlayer, saveGameState]);
+    broadcastSound('card');
+  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
 
   const passTurn = useCallback(() => {
     if (!gameState || !currentPlayer) return;
@@ -293,7 +316,7 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
         return;
     }
 
-    let newState = { ...gameState };
+    const newState = { ...gameState };
     newState.lastActionMessage = `${currentPlayer.name} passed.`;
     newState.currentPlayerIndex = (newState.currentPlayerIndex + 1) % newState.players.length;
 
@@ -303,7 +326,8 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
     // For now, let's just move to next player.
 
     saveGameState(newState);
-  }, [gameState, currentPlayer, saveGameState]);
+    broadcastSound('move');
+  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
 
   const resetGame = useCallback(async () => {
     setGameState(null);
