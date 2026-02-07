@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   Trophy,
   ArrowLeft,
@@ -154,6 +154,7 @@ const UnoGame: React.FC = () => {
 
   return (
     <div className="min-h-screen relative overflow-y-auto bg-zinc-950 p-4 sm:p-8" onClick={resumeAudio} onTouchStart={resumeAudio}>
+      <LayoutGroup id="uno-game">
       <Confetti isActive={gameState.status === 'finished'} duration={5000} />
       <VoiceControls />
 
@@ -264,7 +265,7 @@ const UnoGame: React.FC = () => {
                     className="relative cursor-pointer"
                     onClick={() => isMyTurn && drawCard()}
                 >
-                    <UnoCard card={gameState.deck[0]} isBack size="lg" />
+                    <UnoCard card={gameState.deck[0]} isBack size="lg" layoutId={`deck-${gameState.deck[0]?.id}`} />
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/20 rounded-full px-3 py-1 text-xs font-bold text-white">
                         {gameState.deck.length}
                     </div>
@@ -280,7 +281,7 @@ const UnoGame: React.FC = () => {
                         animate={{ scale: 1, opacity: 1, rotate: 0, y: 0 }}
                         className="relative"
                     >
-                        <UnoCard card={topCard} size="lg" />
+                        <UnoCard card={topCard} size="lg" layoutId={topCard.id} />
                         {gameState.selectedColor && topCard.color === 'wild' && (
                              <div className={cn(
                                 "absolute -bottom-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full border-2 border-white shadow-lg",
@@ -302,20 +303,16 @@ const UnoGame: React.FC = () => {
 
              <div className="flex flex-wrap justify-center gap-2 max-w-4xl mx-auto px-4">
                 {myPlayer?.hand.map((card, idx) => (
-                    <motion.div
-                        key={card.id}
-                        initial={{ y: 50, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: idx * 0.05 }}
-                    >
+                    <div key={card.id}>
                         <UnoCard
                             card={card}
                             isPlayable={isMyTurn && isPlayable(card, topCard, gameState.selectedColor)}
                             disabled={!isMyTurn}
                             onClick={() => handlePlayCard(card.id)}
                             size="md"
+                            layoutId={card.id}
                         />
-                    </motion.div>
+                    </div>
                 ))}
              </div>
 
@@ -349,6 +346,7 @@ const UnoGame: React.FC = () => {
              </div>
         </div>
       </div>
+      </LayoutGroup>
 
       {/* Color Picker Overlay */}
       <AnimatePresence>

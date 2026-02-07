@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   Trophy,
   ArrowLeft,
@@ -337,15 +337,17 @@ const LudoGame: React.FC = () => {
         </div>
 
         {/* Center: Board */}
-        <div className="w-full flex-1 flex flex-col items-center gap-4 sm:gap-8 order-1 xl:order-2">
+        <div className="w-full flex-1 flex-col items-center gap-4 sm:gap-8 order-1 xl:order-2 flex">
             <div className="relative aspect-square w-full max-w-[min(95vw,900px)] glass-card p-1 sm:p-2 rounded-xl shadow-2xl overflow-hidden border-2 border-primary/20">
-                <div className="grid grid-cols-15 grid-rows-15 w-full h-full bg-zinc-900 border border-white/5">
-                    {Array.from({ length: 15 * 15 }).map((_, i) => {
-                        const r = Math.floor(i / 15);
-                        const c = i % 15;
-                        return renderCell(r, c);
-                    })}
-                </div>
+                <LayoutGroup id="ludo-board">
+                    <div className="grid grid-cols-15 grid-rows-15 w-full h-full bg-zinc-900 border border-white/5">
+                        {Array.from({ length: 15 * 15 }).map((_, i) => {
+                            const r = Math.floor(i / 15);
+                            const c = i % 15;
+                            return renderCell(r, c);
+                        })}
+                    </div>
+                </LayoutGroup>
             </div>
 
             {/* Controls */}
@@ -499,7 +501,12 @@ const Token: React.FC<TokenProps> = ({ token, isSelectable, onClick, isStacked }
     return (
         <motion.div
             layoutId={token.id}
-            transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            transition={{
+                type: "spring",
+                damping: 25,
+                stiffness: 300,
+                mass: 0.8
+            }}
             role="button"
             tabIndex={isSelectable ? 0 : -1}
             aria-label={`Token ${token.index + 1} (${token.color})`}

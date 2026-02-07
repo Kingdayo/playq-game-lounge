@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   Trophy,
   ArrowLeft,
@@ -160,6 +160,7 @@ const DominoesGame: React.FC = () => {
 
   return (
     <div className="min-h-screen relative overflow-y-auto bg-zinc-950 p-4 sm:p-8 flex flex-col" onClick={resumeAudio} onTouchStart={resumeAudio}>
+      <LayoutGroup id="dominoes-game">
       <Confetti isActive={gameState.status === 'finished'} duration={5000} />
       <VoiceControls />
 
@@ -228,7 +229,7 @@ const DominoesGame: React.FC = () => {
         </div>
 
         {/* Board (Center) */}
-        <div className="flex-1 glass-card rounded-3xl overflow-auto p-8 flex items-center justify-center min-h-[300px]">
+        <div className="flex-1 glass-card rounded-3xl overflow-hidden p-8 flex items-center justify-center min-h-[300px]">
           <div className="flex items-center gap-1 min-w-max">
             {gameState.board.tiles.length === 0 ? (
               <div className="text-white/20 font-display text-xl uppercase tracking-widest border-2 border-dashed border-white/10 p-12 rounded-2xl">
@@ -260,14 +261,14 @@ const DominoesGame: React.FC = () => {
                   return (
                     <motion.div
                       key={`${placed.tile.id}-${idx}`}
-                      layout
+                      layoutId={placed.tile.id}
                       initial={{
                         scale: 0.5,
                         opacity: 0,
                         x: idx === 0 ? -100 : 100
                       }}
                       animate={{ scale: 1, opacity: 1, x: 0 }}
-                      transition={{ type: "spring", damping: 15, stiffness: 200 }}
+                      transition={{ type: "spring", damping: 20, stiffness: 300 }}
                     >
                       <DominoTileComponent
                         tile={placed.tile}
@@ -335,11 +336,11 @@ const DominoesGame: React.FC = () => {
               {myPlayer?.hand.map((tile, idx) => (
                 <motion.div
                   key={tile.id}
-                  layout
+                  layoutId={tile.id}
                   initial={{ y: 50, opacity: 0, rotate: -10 }}
                   animate={{ y: 0, opacity: 1, rotate: 0 }}
                   exit={{ scale: 0.5, opacity: 0, y: -50 }}
-                  transition={{ delay: idx * 0.03, type: "spring", damping: 20 }}
+                  transition={{ delay: idx * 0.03, type: "spring", damping: 25, stiffness: 300 }}
                 >
                   <DominoTileComponent
                     tile={tile}
@@ -354,6 +355,7 @@ const DominoesGame: React.FC = () => {
           </div>
         </div>
       </div>
+      </LayoutGroup>
 
       {/* Placement Choice Overlay */}
       <AnimatePresence>

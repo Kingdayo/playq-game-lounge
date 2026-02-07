@@ -17,6 +17,7 @@ interface UnoCardProps {
   isPlayable?: boolean;
   size?: 'sm' | 'md' | 'lg';
   isBack?: boolean;
+  layoutId?: string;
 }
 
 const colorMap: Record<UnoColor, string> = {
@@ -33,7 +34,8 @@ const UnoCard: React.FC<UnoCardProps> = ({
   disabled,
   isPlayable,
   size = 'md',
-  isBack = false
+  isBack = false,
+  layoutId
 }) => {
   const sizeClasses = {
     sm: 'w-12 h-20 text-xs',
@@ -44,6 +46,7 @@ const UnoCard: React.FC<UnoCardProps> = ({
   if (isBack) {
     return (
       <motion.div
+        layoutId={layoutId}
         initial={{ rotateY: 180, opacity: 0 }}
         animate={{ rotateY: 0, opacity: 1 }}
         exit={{ rotateY: -180, opacity: 0 }}
@@ -74,6 +77,7 @@ const UnoCard: React.FC<UnoCardProps> = ({
   return (
     <motion.div
       layout
+      layoutId={layoutId}
       initial={{ scale: 0.5, opacity: 0, y: 50 }}
       animate={{ scale: 1, opacity: 1, y: 0 }}
       exit={{ scale: 0.5, opacity: 0, y: -50 }}
