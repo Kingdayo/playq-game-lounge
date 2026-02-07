@@ -24,17 +24,17 @@ export const useSound = () => {
 const SOUNDS = {
   dice: 'https://assets.mixkit.co/active_storage/sfx/1003/1003-preview.mp3',
   card: 'https://assets.mixkit.co/active_storage/sfx/2012/2012-preview.mp3',
-  move: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3',
-  win: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
-  error: 'https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3',
+  move: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
+  win: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
+  error: 'https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3',
   success: 'https://assets.mixkit.co/active_storage/sfx/1110/1110-preview.mp3',
 };
 
 const BGM_URLS = {
-  uno: 'https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3',
-  ludo: 'https://assets.mixkit.co/music/preview/mixkit-games-worldbeat-466.mp3',
-  dominoes: 'https://assets.mixkit.co/music/preview/mixkit-jazzy-abstract-beat-1122.mp3',
-  pictionary: 'https://assets.mixkit.co/music/preview/mixkit-dreaming-big-31.mp3',
+  uno: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+  ludo: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
+  dominoes: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+  pictionary: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
 };
 
 export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -48,7 +48,8 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return stored !== null ? JSON.parse(stored) : 80;
   });
 
-  const audioCache = useRef<Record<string, HTMLAudioElement>>({});
+  const sfxCache = useRef<Record<string, HTMLAudioElement>>({});
+  const bgmCache = useRef<Record<string, HTMLAudioElement>>({});
   const bgmRef = useRef<HTMLAudioElement | null>(null);
   const currentBGMType = useRef<BGMType | null>(null);
 
@@ -58,7 +59,10 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (!soundEnabled) {
         bgmRef.current.pause();
       } else if (currentBGMType.current) {
-        bgmRef.current.play().catch(() => {});
+        const playPromise = bgmRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {});
+        }
       }
     }
   }, [soundEnabled]);
@@ -66,7 +70,7 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     localStorage.setItem('playq-sound-volume', JSON.stringify(soundVolume));
     if (bgmRef.current) {
-      bgmRef.current.volume = (soundVolume / 100) * 0.4; // BGM is quieter (40% of master)
+      bgmRef.current.volume = (soundVolume / 100) * 0.4;
     }
   }, [soundVolume]);
 
@@ -75,28 +79,40 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     Object.entries(SOUNDS).forEach(([name, url]) => {
       const audio = new Audio(url);
       audio.load();
-      audioCache.current[name] = audio;
+      sfxCache.current[name] = audio;
+    });
+
+    // Preload BGMs
+    Object.entries(BGM_URLS).forEach(([name, url]) => {
+      const audio = new Audio(url);
+      audio.loop = true;
+      audio.load();
+      bgmCache.current[name] = audio;
     });
   }, []);
 
-  const playSound = useCallback((soundName: keyof typeof SOUNDS) => {
+  const playSound = useCallback((soundName: SoundName) => {
     if (!soundEnabled) return;
 
-    const audio = audioCache.current[soundName];
+    const audio = sfxCache.current[soundName];
     if (audio) {
       const playInstance = audio.cloneNode() as HTMLAudioElement;
       playInstance.volume = soundVolume / 100;
-      playInstance.play().catch(err => {
-        if (err.name !== 'NotAllowedError') {
-          console.error('Error playing sound:', err);
-        }
-      });
+      const playPromise = playInstance.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+            console.error('Error playing sound:', err);
+          }
+        });
+      }
     }
   }, [soundEnabled, soundVolume]);
 
   const stopBGM = useCallback(() => {
     if (bgmRef.current) {
       bgmRef.current.pause();
+      bgmRef.current.currentTime = 0; // Reset for better "stopped" behavior
       bgmRef.current = null;
       currentBGMType.current = null;
     }
@@ -107,18 +123,22 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     stopBGM();
 
-    const audio = new Audio(BGM_URLS[type]);
-    audio.loop = true;
-    audio.volume = (soundVolume / 100) * 0.4;
-    bgmRef.current = audio;
-    currentBGMType.current = type;
+    const audio = bgmCache.current[type];
+    if (audio) {
+      audio.volume = (soundVolume / 100) * 0.4;
+      bgmRef.current = audio;
+      currentBGMType.current = type;
 
-    if (soundEnabled) {
-      audio.play().catch(err => {
-        if (err.name !== 'NotAllowedError') {
-          console.error('Error playing BGM:', err);
+      if (soundEnabled) {
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(err => {
+            if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+              console.error('Error playing BGM:', err);
+            }
+          });
         }
-      });
+      }
     }
   }, [soundEnabled, soundVolume, stopBGM]);
 
