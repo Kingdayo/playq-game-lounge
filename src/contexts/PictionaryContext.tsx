@@ -195,7 +195,7 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
     } else if (!gameState || gameState.status === 'finished') {
       stopBGM();
     }
-  }, [gameState?.status, playBGM, stopBGM]);
+  }, [gameState?.status, playBGM, stopBGM, gameState]);
 
   const startRound = useCallback(() => {
     if (!gameStateRef.current || !currentPlayer?.isHost) return;

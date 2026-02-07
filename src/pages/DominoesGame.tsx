@@ -53,7 +53,7 @@ const DominoesGame: React.FC = () => {
     if (code && currentPlayer) {
       connectVoice(`voice-lobby-${code}`, currentPlayer);
     }
-  }, [code, currentPlayer?.id, connectVoice]);
+  }, [code, currentPlayer?.id, connectVoice, currentPlayer]);
 
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [showPlacementChoice, setShowPlacementChoice] = useState(false);

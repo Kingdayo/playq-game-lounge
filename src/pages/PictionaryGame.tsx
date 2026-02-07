@@ -189,7 +189,7 @@ const PictionaryGame: React.FC = () => {
     if (code && currentPlayer) {
       connectVoice(`voice-lobby-${code}`, currentPlayer);
     }
-  }, [code, currentPlayer?.id, connectVoice]);
+  }, [code, currentPlayer?.id, connectVoice, currentPlayer]);
 
   const [guessText, setGuessText] = useState('');
   const [brushColor, setBrushColor] = useState(COLORS[0]);
