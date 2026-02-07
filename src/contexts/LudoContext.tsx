@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { LudoGameState, initializeGame, moveToken, getLegalMoves, skipTurn } from '../lib/ludo';
 import { useGame } from './GameContext';
-import { useSound, SoundName } from './SoundContext';
+import { useSound } from './SoundContext';
+import { SoundName } from '@/types/game';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 

@@ -52,3 +52,6 @@ export interface ChatRoom {
   isGroup: boolean;
   memberCount?: number;
 }
+
+export type SoundName = 'dice' | 'card' | 'move' | 'win' | 'error' | 'success';
+export type BGMType = 'uno' | 'ludo' | 'dominoes' | 'pictionary';
