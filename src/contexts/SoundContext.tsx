@@ -22,12 +22,13 @@ export const useSound = () => {
 };
 
 const SOUNDS = {
-  dice: 'https://assets.mixkit.co/active_storage/sfx/1003/1003-preview.mp3',
-  card: 'https://assets.mixkit.co/active_storage/sfx/2012/2012-preview.mp3',
-  move: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
-  win: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
-  error: 'https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3',
-  success: 'https://assets.mixkit.co/active_storage/sfx/1110/1110-preview.mp3',
+  dice: 'https://assets.mixkit.co/active_storage/sfx/1012/1012-preview.mp3',
+  card: 'https://assets.mixkit.co/active_storage/sfx/2011/2011-preview.mp3',
+  move: 'https://assets.mixkit.co/active_storage/sfx/2561/2561-preview.mp3',
+  win: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
+  error: 'https://assets.mixkit.co/active_storage/sfx/2567/2567-preview.mp3',
+  success: 'https://assets.mixkit.co/active_storage/sfx/1103/1103-preview.mp3',
+  chat: 'https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3',
 };
 
 const BGM_URLS = {
@@ -70,7 +71,7 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     localStorage.setItem('playq-sound-volume', JSON.stringify(soundVolume));
     if (bgmRef.current) {
-      bgmRef.current.volume = (soundVolume / 100) * 0.4;
+      bgmRef.current.volume = (soundVolume / 100) * 0.15;
     }
   }, [soundVolume]);
 
@@ -97,7 +98,7 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const audio = sfxCache.current[soundName];
     if (audio) {
       const playInstance = audio.cloneNode() as HTMLAudioElement;
-      playInstance.volume = soundVolume / 100;
+      playInstance.volume = (soundVolume / 100) * 0.3;
       const playPromise = playInstance.play();
       if (playPromise !== undefined) {
         playPromise.catch(err => {
@@ -125,7 +126,7 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const audio = bgmCache.current[type];
     if (audio) {
-      audio.volume = (soundVolume / 100) * 0.4;
+      audio.volume = (soundVolume / 100) * 0.15;
       bgmRef.current = audio;
       currentBGMType.current = type;
 
