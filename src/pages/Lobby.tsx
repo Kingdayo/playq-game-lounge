@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -20,7 +20,7 @@ import VoiceChat from '@/components/VoiceChat';
 import VoiceControls from '@/components/VoiceControls';
 import ChatPanel from '@/components/ChatPanel';
 import { useGame } from '@/contexts/GameContext';
-import { useChat } from '@/contexts/ChatContext';
+import { useLobbyChat } from '@/hooks/useLobbyChat';
 import { useVoice } from '@/contexts/VoiceContext';
 import { useSound } from '@/contexts/SoundContext';
 import { useUno } from '@/contexts/UnoContext';
@@ -35,7 +35,7 @@ const Lobby: React.FC = () => {
   const navigate = useNavigate();
   const { currentLobby, currentPlayer, setPlayerReady, leaveLobby, updateLobbySettings, startGame: startLobbyGame } = useGame();
   const { playSound, playBGM } = useSound();
-  const { sendMessage, roomMessages, createLobbyRoom } = useChat();
+  const { messages: lobbyChatMessages, sendMessage: sendLobbyMessage } = useLobbyChat(code);
   const { connect: connectVoice, disconnect: disconnectVoice, participants: voiceParticipants, resumeAudio } = useVoice();
   const { startGame: startUnoGame } = useUno();
   const { startGame: startLudoGame } = useLudo();
@@ -49,20 +49,13 @@ const Lobby: React.FC = () => {
   const prevReadyStatesRef = React.useRef<Record<string, boolean>>({});
   const prevMessagesLengthRef = React.useRef(0);
 
-  const roomId = code ? `lobby-${code}` : '';
-  const messages = useMemo(() => roomId ? roomMessages[roomId] || [] : [], [roomId, roomMessages]);
+  const messages = lobbyChatMessages;
 
   useEffect(() => {
     // Simulate loading
     const timer = setTimeout(() => setIsLoading(false), 1500);
     return () => clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    if (code) {
-      createLobbyRoom(code);
-    }
-  }, [code, createLobbyRoom]);
 
   // Auto-connect to voice
   useEffect(() => {
@@ -126,14 +119,8 @@ const Lobby: React.FC = () => {
   };
 
   const handleSendMessage = (content: string) => {
-    if (!currentPlayer || !roomId) return;
-    
-    sendMessage(
-      roomId,
-      content,
-      currentPlayer.name,
-      currentPlayer.avatar
-    );
+    if (!currentPlayer) return;
+    sendLobbyMessage(content);
   };
 
   const handleStartGame = async () => {

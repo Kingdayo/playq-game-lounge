@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useGame } from '@/contexts/GameContext';
 import { useLudo } from '@/contexts/LudoContext';
-import { useChat } from '@/contexts/ChatContext';
+import { useLobbyChat } from '@/hooks/useLobbyChat';
 import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
@@ -28,7 +28,7 @@ const LudoGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer, leaveLobby } = useGame();
-  const { sendMessage, roomMessages, createLobbyRoom } = useChat();
+  const { messages: lobbyChatMessages, sendMessage: sendLobbyMessage } = useLobbyChat(code);
   const { participants: voiceParticipants, resumeAudio, connect: connectVoice, disconnect: disconnectVoice } = useVoice();
   const {
     gameState,
@@ -40,24 +40,11 @@ const LudoGame: React.FC = () => {
 
   const [showChat, setShowChat] = React.useState(false);
 
-  const roomId = code ? `lobby-${code}` : '';
-  const messages = roomId ? roomMessages[roomId] || [] : [];
-
-  useEffect(() => {
-    if (code) {
-      createLobbyRoom(code);
-    }
-  }, [code, createLobbyRoom]);
+  const messages = lobbyChatMessages;
 
   const handleSendMessage = (content: string) => {
-    if (!currentPlayer || !roomId) return;
-
-    sendMessage(
-      roomId,
-      content,
-      currentPlayer.name,
-      currentPlayer.avatar
-    );
+    if (!currentPlayer) return;
+    sendLobbyMessage(content);
   };
 
   const handleLeave = () => {
