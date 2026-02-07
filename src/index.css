@@ -346,6 +346,21 @@
   }
 }
 
+@layer base {
+  /* Accessibility: Large Text */
+  html.large-text {
+    font-size: 112.5%;
+  }
+
+  /* Accessibility: Color Blind Mode */
+  .color-blind {
+    --primary: 200 100% 50%; /* Brighter, more distinct blue */
+    --secondary: 45 100% 50%; /* Distinct amber/yellow */
+    --accent: 0 0% 100%; /* White for high contrast */
+    filter: saturate(1.25) contrast(1.1);
+  }
+}
+
 @layer utilities {
   /* Text shadow utilities */
   .text-glow {
