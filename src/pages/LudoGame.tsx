@@ -16,7 +16,7 @@ import { useChat } from '@/contexts/ChatContext';
 import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { LudoColor, BOARD_CONFIG, COLORS, GLOBAL_SAFE_SQUARES, getLegalMoves } from '@/lib/ludo';
+import { LudoColor, BOARD_CONFIG, COLORS, GLOBAL_SAFE_SQUARES, getLegalMoves, LudoToken } from '@/lib/ludo';
 import Confetti from '@/components/Confetti';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { useVoice } from '@/contexts/VoiceContext';
@@ -71,7 +71,7 @@ const LudoGame: React.FC = () => {
     if (code && currentPlayer) {
       connectVoice(`voice-lobby-${code}`, currentPlayer);
     }
-  }, [code, currentPlayer?.id, connectVoice]);
+  }, [code, currentPlayer?.id, connectVoice, currentPlayer]);
 
   if (!currentLobby) {
     return (
@@ -114,7 +114,7 @@ const LudoGame: React.FC = () => {
   const legalMoves = isMyTurn ? getLegalMoves(gameState) : [];
 
   const getTokensAtPosition = (type: 'main' | 'homeCol' | 'homeArea' | 'finish', posIdx: number, color?: LudoColor) => {
-    const tokens: any[] = [];
+    const tokens: LudoToken[] = [];
     gameState.players.forEach(p => {
       p.tokens.forEach(t => {
         if (type === 'main' && t.position === posIdx) tokens.push(t);
@@ -130,10 +130,10 @@ const LudoGame: React.FC = () => {
 
   const renderCell = (r: number, c: number) => {
     // Determine cell type
-    let cellClass = "w-full h-full border border-white/10 flex items-center justify-center relative";
+    const cellClass = "w-full h-full border border-white/10 flex items-center justify-center relative";
     let bgClass = "bg-zinc-800/50";
     let content: React.ReactNode = null;
-    let onClick: (() => void) | undefined = undefined;
+    const onClick: (() => void) | undefined = undefined;
 
     // Check Home Areas
     for (const color of COLORS) {
@@ -481,7 +481,7 @@ const LudoGame: React.FC = () => {
 };
 
 interface TokenProps {
-    token: any;
+    token: LudoToken;
     isSelectable: boolean;
     onClick: () => void;
     isStacked?: boolean;

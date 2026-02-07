@@ -86,7 +86,7 @@ const UnoGame: React.FC = () => {
     if (code && currentPlayer) {
       connectVoice(`voice-lobby-${code}`, currentPlayer);
     }
-  }, [code, currentPlayer?.id, connectVoice]);
+  }, [code, currentPlayer?.id, connectVoice, currentPlayer]);
 
   // Handle wild card play - show color picker
   const handlePlayCard = (cardId: string) => {

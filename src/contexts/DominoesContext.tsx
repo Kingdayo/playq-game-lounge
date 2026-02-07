@@ -108,7 +108,7 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
     } else if (!gameState || gameState.status === 'finished') {
       stopBGM();
     }
-  }, [gameState?.status, playBGM, stopBGM]);
+  }, [gameState?.status, playBGM, stopBGM, gameState]);
 
   const broadcastSound = useCallback((soundName: SoundName) => {
     if (channelRef.current) {

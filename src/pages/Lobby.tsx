@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -22,6 +22,7 @@ import ChatPanel from '@/components/ChatPanel';
 import { useGame } from '@/contexts/GameContext';
 import { useChat } from '@/contexts/ChatContext';
 import { useVoice } from '@/contexts/VoiceContext';
+import { useSound } from '@/contexts/SoundContext';
 import { useUno } from '@/contexts/UnoContext';
 import { useLudo } from '@/contexts/LudoContext';
 import { useDominoes } from '@/contexts/DominoesContext';
@@ -33,6 +34,7 @@ const Lobby: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { currentLobby, currentPlayer, setPlayerReady, leaveLobby, updateLobbySettings, startGame: startLobbyGame } = useGame();
+  const { playSound, playBGM } = useSound();
   const { sendMessage, roomMessages, createLobbyRoom } = useChat();
   const { connect: connectVoice, disconnect: disconnectVoice, participants: voiceParticipants, resumeAudio } = useVoice();
   const { startGame: startUnoGame } = useUno();
@@ -43,9 +45,12 @@ const Lobby: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showChat, setShowChat] = useState(false);
+  const prevPlayersLengthRef = React.useRef(0);
+  const prevReadyStatesRef = React.useRef<Record<string, boolean>>({});
+  const prevMessagesLengthRef = React.useRef(0);
 
   const roomId = code ? `lobby-${code}` : '';
-  const messages = roomId ? roomMessages[roomId] || [] : [];
+  const messages = useMemo(() => roomId ? roomMessages[roomId] || [] : [], [roomId, roomMessages]);
 
   useEffect(() => {
     // Simulate loading
@@ -64,7 +69,46 @@ const Lobby: React.FC = () => {
     if (code && currentPlayer) {
       connectVoice(`voice-lobby-${code}`, currentPlayer);
     }
-  }, [code, currentPlayer?.id, connectVoice]);
+  }, [code, currentPlayer?.id, connectVoice, currentPlayer]);
+
+  // Play BGM based on game type
+  useEffect(() => {
+    if (currentLobby?.gameType) {
+      playBGM(currentLobby.gameType);
+    }
+  }, [currentLobby?.gameType, playBGM]);
+
+  // Play sound when someone joins or readies up
+  useEffect(() => {
+    if (currentLobby?.players) {
+      // Check for new players
+      if (currentLobby.players.length > prevPlayersLengthRef.current && prevPlayersLengthRef.current > 0) {
+        playSound('move');
+      }
+
+      // Check for ready state changes
+      currentLobby.players.forEach(p => {
+        const wasReady = prevReadyStatesRef.current[p.id];
+        if (p.isReady && wasReady === false && p.id !== currentPlayer?.id) {
+          playSound('success');
+        }
+      });
+
+      prevPlayersLengthRef.current = currentLobby.players.length;
+      prevReadyStatesRef.current = currentLobby.players.reduce((acc, p) => ({ ...acc, [p.id]: p.isReady }), {});
+    }
+  }, [currentLobby?.players, playSound, currentPlayer?.id]);
+
+  // Play sound for new chat messages
+  useEffect(() => {
+    if (messages.length > prevMessagesLengthRef.current) {
+      const lastMessage = messages[messages.length - 1];
+      if (prevMessagesLengthRef.current > 0 && lastMessage.sender !== currentPlayer?.name) {
+        playSound('card');
+      }
+    }
+    prevMessagesLengthRef.current = messages.length;
+  }, [messages.length, playSound, currentPlayer?.id, currentPlayer, messages]);
 
   // Handle game start synchronization
   useEffect(() => {
@@ -96,6 +140,7 @@ const Lobby: React.FC = () => {
     if (!currentLobby) return;
 
     try {
+      playSound('success');
       if (currentLobby.gameType === 'uno') {
         startUnoGame();
       } else if (currentLobby.gameType === 'ludo') {
@@ -318,7 +363,10 @@ const Lobby: React.FC = () => {
                   <Switch
                     id="ready-toggle"
                     checked={currentPlayer?.isReady || false}
-                    onCheckedChange={(checked) => setPlayerReady(checked)}
+                    onCheckedChange={(checked) => {
+                      setPlayerReady(checked);
+                      playSound(checked ? 'success' : 'error');
+                    }}
                   />
                 </div>
               )}

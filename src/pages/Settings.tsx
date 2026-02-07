@@ -199,7 +199,7 @@ const Settings: React.FC = () => {
             {/* Color Scheme */}
             <div className="space-y-2">
               <Label>Color Scheme</Label>
-              <Select value={colorScheme} onValueChange={(value) => setColorScheme(value as any)}>
+              <Select value={colorScheme} onValueChange={(value) => setColorScheme(value as "default" | "crimson" | "forest" | "ocean")}>
                 <SelectTrigger className="bg-muted border-0">
                   <SelectValue />
                 </SelectTrigger>
