@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Users, Search, Plus, ChevronLeft } from 'lucide-react';
+import { Send, Users, Search, Plus, ChevronLeft, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 const Chat: React.FC = () => {
   const { currentPlayer } = useGame();
-  const { rooms, roomMessages, sendMessage, markAsRead } = useChat();
+  const { rooms, roomMessages, sendMessage, markAsRead, deleteRoom } = useChat();
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,6 +54,15 @@ const Chat: React.FC = () => {
     setSelectedRoomId(roomId);
     setIsMobileChatOpen(true);
     markAsRead(roomId);
+  };
+
+  const handleDeleteRoom = (e: React.MouseEvent, roomId: string) => {
+    e.stopPropagation();
+    deleteRoom(roomId);
+    if (selectedRoomId === roomId) {
+      setSelectedRoomId(null);
+      setIsMobileChatOpen(false);
+    }
   };
 
   const formatTime = (date: Date | string | undefined) => {
@@ -113,7 +122,7 @@ const Chat: React.FC = () => {
                 whileHover={{ x: 4 }}
                 onClick={() => handleSelectRoom(room.id)}
                 className={cn(
-                  "w-full p-3 rounded-xl text-left transition-colors",
+                  "w-full p-3 rounded-xl text-left transition-colors group relative",
                   selectedRoomId === room.id
                     ? 'bg-primary/10 border border-primary/20'
                     : 'hover:bg-muted'
@@ -147,11 +156,21 @@ const Chat: React.FC = () => {
                       {room.lastMessage || 'No messages yet'}
                     </p>
                   </div>
-                  {room.unreadCount > 0 && (
-                    <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">
-                      {room.unreadCount}
-                    </span>
-                  )}
+                  <div className="flex flex-col items-end gap-2">
+                    {room.unreadCount > 0 && (
+                      <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">
+                        {room.unreadCount}
+                      </span>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => handleDeleteRoom(e, room.id)}
+                      className="w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </motion.button>
             ))}
