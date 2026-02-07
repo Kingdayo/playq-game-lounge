@@ -37,7 +37,7 @@ export const usePictionary = () => {
 
 export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentLobby, currentPlayer } = useGame();
-  const { playSound } = useSound();
+  const { playSound, playBGM, stopBGM } = useSound();
   const [gameState, setGameState] = useState<PictionaryGameState | null>(null);
   const gameStateRef = useRef<PictionaryGameState | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -188,6 +188,14 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, [currentLobby?.settings?.houseRules?.pictionaryGameState, gameState]);
 
+  useEffect(() => {
+    if (gameState && (gameState.status === 'drawing' || gameState.status === 'starting' || gameState.status === 'round_end')) {
+      playBGM('pictionary');
+    } else if (!gameState || gameState.status === 'finished') {
+      stopBGM();
+    }
+  }, [gameState?.status, playBGM, stopBGM]);
+
   const startGame = useCallback(() => {
     if (!currentLobby || !currentPlayer?.isHost) return;
 
@@ -207,7 +215,7 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
         startRound();
     }, 3000);
 
-  }, [currentLobby, currentPlayer, saveGameState, broadcastSound]);
+  }, [currentLobby, currentPlayer, saveGameState, broadcastSound, startRound]);
 
   const startRound = useCallback(() => {
     if (!gameStateRef.current || !currentPlayer?.isHost) return;

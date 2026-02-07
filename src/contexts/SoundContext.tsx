@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 
 export type SoundName = 'dice' | 'card' | 'move' | 'win' | 'error' | 'success';
+export type BGMType = 'uno' | 'ludo' | 'dominoes' | 'pictionary';
 
 interface SoundContextType {
   soundEnabled: boolean;
@@ -8,6 +9,8 @@ interface SoundContextType {
   setSoundEnabled: (enabled: boolean) => void;
   setSoundVolume: (volume: number) => void;
   playSound: (soundName: SoundName) => void;
+  playBGM: (type: BGMType) => void;
+  stopBGM: () => void;
 }
 
 const SoundContext = createContext<SoundContextType | undefined>(undefined);
@@ -29,6 +32,13 @@ const SOUNDS = {
   success: 'https://assets.mixkit.co/active_storage/sfx/1110/1110-preview.mp3',
 };
 
+const BGM_URLS = {
+  uno: 'https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3',
+  ludo: 'https://assets.mixkit.co/music/preview/mixkit-games-worldbeat-466.mp3',
+  dominoes: 'https://assets.mixkit.co/music/preview/mixkit-jazzy-abstract-beat-1122.mp3',
+  pictionary: 'https://assets.mixkit.co/music/preview/mixkit-dreaming-big-31.mp3',
+};
+
 export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [soundEnabled, setSoundEnabled] = useState(() => {
     const stored = localStorage.getItem('playq-sound-enabled');
@@ -41,13 +51,25 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
 
   const audioCache = useRef<Record<string, HTMLAudioElement>>({});
+  const bgmRef = useRef<HTMLAudioElement | null>(null);
+  const currentBGMType = useRef<BGMType | null>(null);
 
   useEffect(() => {
     localStorage.setItem('playq-sound-enabled', JSON.stringify(soundEnabled));
+    if (bgmRef.current) {
+      if (!soundEnabled) {
+        bgmRef.current.pause();
+      } else if (currentBGMType.current) {
+        bgmRef.current.play().catch(() => {});
+      }
+    }
   }, [soundEnabled]);
 
   useEffect(() => {
     localStorage.setItem('playq-sound-volume', JSON.stringify(soundVolume));
+    if (bgmRef.current) {
+      bgmRef.current.volume = (soundVolume / 100) * 0.4; // BGM is quieter (40% of master)
+    }
   }, [soundVolume]);
 
   useEffect(() => {
@@ -64,11 +86,9 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const audio = audioCache.current[soundName];
     if (audio) {
-      // Create a new Audio object or clone the cached one to allow overlapping sounds
       const playInstance = audio.cloneNode() as HTMLAudioElement;
       playInstance.volume = soundVolume / 100;
       playInstance.play().catch(err => {
-        // Only log error if it's not the "user didn't interact" error
         if (err.name !== 'NotAllowedError') {
           console.error('Error playing sound:', err);
         }
@@ -76,13 +96,43 @@ export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [soundEnabled, soundVolume]);
 
+  const stopBGM = useCallback(() => {
+    if (bgmRef.current) {
+      bgmRef.current.pause();
+      bgmRef.current = null;
+      currentBGMType.current = null;
+    }
+  }, []);
+
+  const playBGM = useCallback((type: BGMType) => {
+    if (currentBGMType.current === type) return;
+
+    stopBGM();
+
+    const audio = new Audio(BGM_URLS[type]);
+    audio.loop = true;
+    audio.volume = (soundVolume / 100) * 0.4;
+    bgmRef.current = audio;
+    currentBGMType.current = type;
+
+    if (soundEnabled) {
+      audio.play().catch(err => {
+        if (err.name !== 'NotAllowedError') {
+          console.error('Error playing BGM:', err);
+        }
+      });
+    }
+  }, [soundEnabled, soundVolume, stopBGM]);
+
   return (
     <SoundContext.Provider value={{
       soundEnabled,
       soundVolume,
       setSoundEnabled,
       setSoundVolume,
-      playSound
+      playSound,
+      playBGM,
+      stopBGM
     }}>
       {children}
     </SoundContext.Provider>

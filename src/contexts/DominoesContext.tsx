@@ -26,7 +26,7 @@ export const useDominoes = () => {
 
 export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentLobby, currentPlayer } = useGame();
-  const { playSound } = useSound();
+  const { playSound, playBGM, stopBGM } = useSound();
   const [gameState, setGameState] = useState<DominoGameState | null>(null);
   const gameStateRef = useRef<DominoGameState | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -100,6 +100,14 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
       setGameState(dbState);
     }
   }, [currentLobby?.settings?.houseRules?.dominoesGameState, gameState]);
+
+  useEffect(() => {
+    if (gameState && gameState.status === 'playing') {
+      playBGM('dominoes');
+    } else if (!gameState || gameState.status === 'finished') {
+      stopBGM();
+    }
+  }, [gameState?.status, playBGM, stopBGM]);
 
   const broadcastSound = useCallback((soundName: SoundName) => {
     if (channelRef.current) {
@@ -267,7 +275,7 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
       return;
     }
 
-    let newState = { ...gameState };
+    const newState = { ...gameState };
     newState.boneyard = [...newState.boneyard];
     newState.players = [...newState.players];
 
