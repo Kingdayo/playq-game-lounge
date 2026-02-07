@@ -307,6 +307,15 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRooms(prev => prev.map(r => r.id === roomId ? { ...r, unreadCount: 0 } : r));
   }, []);
 
+  const deleteRoom = useCallback((roomId: string) => {
+    setRooms(prev => prev.filter(r => r.id !== roomId));
+    setRoomMessages(prev => {
+      const next = { ...prev };
+      delete next[roomId];
+      return next;
+    });
+  }, []);
+
   const getUnreadTotal = useCallback(() => {
     return rooms.reduce((acc, room) => acc + room.unreadCount, 0);
   }, [rooms]);
