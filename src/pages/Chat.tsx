@@ -74,7 +74,7 @@ const Chat: React.FC = () => {
   );
 
   return (
-    <div className="h-[calc(100vh-5rem)] sm:h-screen flex overflow-hidden">
+    <div className="h-[calc(100dvh-5rem)] sm:h-screen flex overflow-hidden">
       {/* Sidebar - Room List */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
