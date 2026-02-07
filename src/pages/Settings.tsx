@@ -37,15 +37,22 @@ const avatarOptions = [
 ];
 
 const Settings: React.FC = () => {
-  const { theme, colorScheme, setTheme, setColorScheme } = useTheme();
+  const {
+    theme,
+    colorScheme,
+    colorBlindMode,
+    largeText,
+    setTheme,
+    setColorScheme,
+    setColorBlindMode,
+    setLargeText
+  } = useTheme();
   const { soundEnabled, soundVolume, setSoundEnabled, setSoundVolume } = useSound();
   const { currentPlayer, setCurrentPlayer } = useGame();
   
   const [username, setUsername] = useState(currentPlayer?.name || '');
   const [selectedAvatar, setSelectedAvatar] = useState(currentPlayer?.avatar || '🎮');
   const [notifications, setNotifications] = useState(true);
-  const [colorBlindMode, setColorBlindMode] = useState(false);
-  const [largeText, setLargeText] = useState(false);
 
   const handleSaveProfile = () => {
     if (currentPlayer) {
