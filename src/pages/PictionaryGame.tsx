@@ -403,7 +403,7 @@ const PictionaryGame: React.FC = () => {
 
                 <div className="flex items-center gap-1 border-r border-border pr-2">
                     <Button
-                        variant={tool === 'brush' ? 'primary' : 'ghost'}
+                        variant={tool === 'brush' ? 'default' : 'ghost'}
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => setTool('brush')}
@@ -411,7 +411,7 @@ const PictionaryGame: React.FC = () => {
                         <Brush className="w-4 h-4" />
                     </Button>
                     <Button
-                        variant={tool === 'eraser' ? 'primary' : 'ghost'}
+                        variant={tool === 'eraser' ? 'default' : 'ghost'}
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => setTool('eraser')}
@@ -484,7 +484,7 @@ const PictionaryGame: React.FC = () => {
                   placeholder="Type your guess..."
                   className="flex-1"
                 />
-                <Button type="submit" variant="primary" size="icon">
+                <Button type="submit" variant="default" size="icon">
                   <Send className="w-4 h-4" />
                 </Button>
               </form>
