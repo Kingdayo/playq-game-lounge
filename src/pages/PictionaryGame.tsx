@@ -284,10 +284,12 @@ const PictionaryGame: React.FC = () => {
               <Trophy className="w-5 h-5 text-yellow-500" />
               Scoreboard
             </h2>
-            <div className="space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-3 overflow-y-auto pr-2 custom-scrollbar flex flex-col">
               {gameState.players.sort((a, b) => b.score - a.score).map((player) => (
-                <div
+                <motion.div
                   key={player.id}
+                  layout
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
                   className={`flex items-center justify-between p-2 rounded-xl transition-colors ${
                     player.id === currentPlayer.id ? 'bg-primary/10 border border-primary/20' : ''
                   }`}
@@ -308,7 +310,7 @@ const PictionaryGame: React.FC = () => {
                     </div>
                   </div>
                   <span className="font-display font-bold text-primary">{player.score}</span>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
