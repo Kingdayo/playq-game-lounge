@@ -28,7 +28,7 @@ export const useUno = () => {
 
 export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentLobby, currentPlayer } = useGame();
-  const { playSound } = useSound();
+  const { playSound, playBGM, stopBGM } = useSound();
   const [gameState, setGameState] = useState<UnoGameState | null>(null);
   const gameStateRef = useRef<UnoGameState | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -150,6 +150,14 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
 }, [currentLobby?.settings?.houseRules?.unoGameState, gameState]);
 
+  useEffect(() => {
+    if (gameState && gameState.status === 'playing') {
+      playBGM('uno');
+    } else if (!gameState || gameState.status === 'finished') {
+      stopBGM();
+    }
+  }, [gameState?.status, playBGM, stopBGM]);
+
   const startGame = useCallback(() => {
     if (!currentLobby || !currentPlayer?.isHost) return;
 
@@ -167,7 +175,7 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       title: "Game Started!",
       description: "Good luck everyone!",
     });
-  }, [currentLobby, currentPlayer, saveGameState]);
+  }, [currentLobby, currentPlayer, saveGameState, broadcastSound]);
 
   const playCard = useCallback((cardId: string, wildColor?: UnoColor) => {
     if (!gameState || !currentPlayer) return;
@@ -277,7 +285,7 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     saveGameState(newState);
-  }, [gameState, currentPlayer, saveGameState]);
+  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
 
   const selectWildColor = useCallback((color: UnoColor) => {
     if (!gameState || !currentPlayer) return;
@@ -285,7 +293,7 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const playerIndex = gameState.players.findIndex(p => p.id === currentPlayer.id);
     if (playerIndex !== gameState.currentPlayerIndex) return;
 
-    let newState = { ...gameState };
+    const newState = { ...gameState };
     newState.selectedColor = color;
 
     // Now move to next player
@@ -315,7 +323,7 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return;
     }
 
-    let newState = { ...gameState };
+    const newState = { ...gameState };
     if (newState.deck.length === 0) {
       const topDiscard = newState.discardPile.pop()!;
       newState.deck = shuffle([...newState.discardPile]);

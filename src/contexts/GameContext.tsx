@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLobbySync } from '@/hooks/useLobbySync';
+import { useSound } from './SoundContext';
 import { Player, GameSettings, Lobby } from '@/types/game';
 
 interface GameContextType {
@@ -51,6 +52,7 @@ interface GameProviderProps {
 }
 
 export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
+  const { stopBGM } = useSound();
   const [currentPlayer, setCurrentPlayerState] = useState<Player | null>(() => {
     const stored = localStorage.getItem('playq-player');
     if (stored) return JSON.parse(stored);
@@ -255,6 +257,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   }, [currentPlayer, updateCurrentPlayer]);
 
   const leaveLobby = useCallback(async () => {
+    stopBGM();
     if (!currentPlayer || !currentLobby) {
       setCurrentLobby(null);
       setActiveLobbyCode(null);
@@ -289,7 +292,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     updateCurrentPlayer({ ...currentPlayer, isHost: false, isReady: false });
     setCurrentLobby(null);
     setActiveLobbyCode(null);
-  }, [currentPlayer, currentLobby, updateCurrentPlayer]);
+  }, [currentPlayer, currentLobby, updateCurrentPlayer, stopBGM]);
 
   const setPlayerReady = useCallback(async (ready: boolean) => {
     if (!currentPlayer || !currentLobby) return;
