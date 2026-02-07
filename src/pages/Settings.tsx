@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useSound } from '@/contexts/SoundContext';
 import { useGame } from '@/contexts/GameContext';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { toast } from 'sonner';
@@ -37,12 +38,11 @@ const avatarOptions = [
 
 const Settings: React.FC = () => {
   const { theme, colorScheme, setTheme, setColorScheme } = useTheme();
+  const { soundEnabled, soundVolume, setSoundEnabled, setSoundVolume } = useSound();
   const { currentPlayer, setCurrentPlayer } = useGame();
   
   const [username, setUsername] = useState(currentPlayer?.name || '');
   const [selectedAvatar, setSelectedAvatar] = useState(currentPlayer?.avatar || '🎮');
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [soundVolume, setSoundVolume] = useState(80);
   const [notifications, setNotifications] = useState(true);
   const [colorBlindMode, setColorBlindMode] = useState(false);
   const [largeText, setLargeText] = useState(false);
