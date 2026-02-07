@@ -331,12 +331,11 @@ const UnoGame: React.FC = () => {
                             }}
                             transition={{
                                 scale: { repeat: Infinity, duration: 1 },
-                                initial: { type: "spring", damping: 15 }
                             }}
                             exit={{ scale: 0, opacity: 0 }}
                         >
                             <GamingButton
-                                variant="warning"
+                                variant="accent"
                                 onClick={callUno}
                                 disabled={gameState.unoCalled[myPlayer.id]}
                                 pulseEffect={!gameState.unoCalled[myPlayer.id]}

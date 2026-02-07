@@ -441,7 +441,7 @@ const Lobby: React.FC = () => {
                     <Label className="text-xs text-muted-foreground uppercase">Variant</Label>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
-                        variant={currentLobby.settings.houseRules?.variant !== 'block' ? 'primary' : 'outline'}
+                        variant={currentLobby.settings.houseRules?.variant !== 'block' ? 'default' : 'outline'}
                         size="sm"
                         className="text-xs h-8"
                         onClick={() => updateLobbySettings({ houseRules: { ...currentLobby.settings.houseRules, variant: 'draw' } })}
@@ -450,7 +450,7 @@ const Lobby: React.FC = () => {
                         Draw
                       </Button>
                       <Button
-                        variant={currentLobby.settings.houseRules?.variant === 'block' ? 'primary' : 'outline'}
+                        variant={currentLobby.settings.houseRules?.variant === 'block' ? 'default' : 'outline'}
                         size="sm"
                         className="text-xs h-8"
                         onClick={() => updateLobbySettings({ houseRules: { ...currentLobby.settings.houseRules, variant: 'block' } })}
@@ -467,7 +467,7 @@ const Lobby: React.FC = () => {
                       {[6, 9, 12].map((size) => (
                         <Button
                           key={size}
-                          variant={(currentLobby.settings.houseRules?.setSize || 6) === size ? 'primary' : 'outline'}
+                          variant={(currentLobby.settings.houseRules?.setSize || 6) === size ? 'default' : 'outline'}
                           size="sm"
                           className="text-xs h-8"
                           onClick={() => updateLobbySettings({ houseRules: { ...currentLobby.settings.houseRules, setSize: size } })}
