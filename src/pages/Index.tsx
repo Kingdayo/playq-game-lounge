@@ -285,7 +285,15 @@ const Index: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 pt-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (joinCode.replace(/\s/g, '').length === 6 && !isJoining) {
+                handleJoinGame();
+              }
+            }}
+            className="space-y-4 pt-4"
+          >
             <div>
               <Input
                 value={joinCode}
@@ -303,10 +311,10 @@ const Index: React.FC = () => {
             </div>
             
             <GamingButton
+              type="submit"
               variant="primary"
               size="lg"
               className="w-full"
-              onClick={handleJoinGame}
               disabled={joinCode.replace(/\s/g, '').length !== 6 || isJoining}
             >
               {isJoining ? (
@@ -321,7 +329,7 @@ const Index: React.FC = () => {
                 </>
               )}
             </GamingButton>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
