@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useGame } from '@/contexts/GameContext';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export interface ChatRoom {
   id: string;
@@ -46,6 +47,7 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentPlayer } = useGame();
+  const { notifyChatMessage } = useNotifications();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [currentRoomMessages, setCurrentRoomMessages] = useState<ChatMessage[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
@@ -365,7 +367,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
               return [...prev, newMsg];
             });
           } else {
-            // Increment unread count for the room
+            // Increment unread count for the room and send notification
+            if (newMsg.sender_id !== currentPlayer.id) {
+              notifyChatMessage(newMsg.sender_name, newMsg.content, newMsg.room_id);
+            }
             setRooms(prev => prev.map(r => {
               if (r.id === newMsg.room_id && newMsg.sender_id !== currentPlayer.id) {
                 return { ...r, unreadCount: r.unreadCount + 1 };

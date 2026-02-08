@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useGame } from '@/contexts/GameContext';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface LobbyMessage {
   id: string;
@@ -17,6 +18,7 @@ interface LobbyMessage {
  */
 export function useLobbyChat(lobbyCode: string | undefined) {
   const { currentPlayer } = useGame();
+  const { notifyChatMessage } = useNotifications();
   const [messages, setMessages] = useState<LobbyMessage[]>([]);
   const [roomId, setRoomId] = useState<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -129,6 +131,10 @@ export function useLobbyChat(lobbyCode: string | undefined) {
               isSystem: m.is_system || false,
             }];
           });
+          // Notify for messages from other players
+          if (currentPlayer && m.sender_id !== currentPlayer.id && !m.is_system) {
+            notifyChatMessage(m.sender_name, m.content, roomId);
+          }
         }
       )
       .subscribe();

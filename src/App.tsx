@@ -9,6 +9,7 @@ import { GameProvider } from "@/contexts/GameContext";
 import { LoadingProvider } from "@/contexts/LoadingContext";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { VoiceProvider } from "@/contexts/VoiceContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import { UnoProvider } from "@/contexts/UnoContext";
 import { LudoProvider } from "@/contexts/LudoContext";
 import { DominoesProvider } from "@/contexts/DominoesContext";
@@ -34,6 +35,7 @@ const App = () => (
       <SoundProvider>
       <LoadingProvider>
         <GameProvider>
+          <NotificationProvider>
           <UnoProvider>
             <LudoProvider>
               <DominoesProvider>
@@ -67,6 +69,7 @@ const App = () => (
               </DominoesProvider>
             </LudoProvider>
           </UnoProvider>
+          </NotificationProvider>
         </GameProvider>
       </LoadingProvider>
       </SoundProvider>
