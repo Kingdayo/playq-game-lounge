@@ -18,12 +18,14 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "robots.txt", "placeholder.svg"],
+      injectRegister: "auto",
+      includeAssets: ["favicon.ico", "robots.txt", "placeholder.svg", "pwa-192x192.png", "pwa-512x512.png"],
       manifest: {
         name: "PlayQ - Multiplayer Games",
         short_name: "PlayQ",
         description: "Play classic multiplayer games with friends - Uno, Pictionary, Ludo, and Dominoes",
         start_url: "/",
+        scope: "/",
         display: "standalone",
         background_color: "#0a0a0f",
         theme_color: "#00d4ff",
