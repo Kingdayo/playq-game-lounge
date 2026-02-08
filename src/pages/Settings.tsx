@@ -9,7 +9,10 @@ import {
   Sun, 
   Monitor,
   Save,
-  RefreshCw
+  RefreshCw,
+  Bell,
+  BellOff,
+  BellRing,
 } from 'lucide-react';
 import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
@@ -27,6 +30,7 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSound } from '@/contexts/SoundContext';
 import { useGame } from '@/contexts/GameContext';
+import { useNotificationContext } from '@/contexts/NotificationContext';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { toast } from 'sonner';
 
@@ -49,10 +53,10 @@ const Settings: React.FC = () => {
   } = useTheme();
   const { soundEnabled, soundVolume, setSoundEnabled, setSoundVolume } = useSound();
   const { currentPlayer, setCurrentPlayer } = useGame();
+  const { permission, enabled: notificationsEnabled, setEnabled: setNotificationsEnabled, requestPermission } = useNotificationContext();
   
   const [username, setUsername] = useState(currentPlayer?.name || '');
   const [selectedAvatar, setSelectedAvatar] = useState(currentPlayer?.avatar || '🎮');
-  const [notifications, setNotifications] = useState(true);
 
   const handleSaveProfile = () => {
     if (currentPlayer) {
@@ -70,7 +74,7 @@ const Settings: React.FC = () => {
     setColorScheme('default');
     setSoundEnabled(true);
     setSoundVolume(80);
-    setNotifications(true);
+    setNotificationsEnabled(true);
     setColorBlindMode(false);
     setLargeText(false);
     toast.info('Settings reset to defaults');
@@ -289,18 +293,54 @@ const Settings: React.FC = () => {
               </div>
             </div>
 
+            {/* Notification Settings */}
             <div className="flex items-center justify-between">
               <div>
-                <Label>Notifications</Label>
+                <Label>Push Notifications</Label>
                 <p className="text-sm text-muted-foreground">
-                  Turn notifications and game alerts
+                  Messages, game invites, and turn alerts
                 </p>
               </div>
-              <Switch
-                checked={notifications}
-                onCheckedChange={setNotifications}
-              />
+              <div className="flex items-center gap-2">
+                {permission === 'denied' && (
+                  <span className="text-xs text-destructive">Blocked</span>
+                )}
+                {permission === 'default' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const result = await requestPermission();
+                      if (result === 'granted') {
+                        toast.success('Notifications enabled!');
+                      } else if (result === 'denied') {
+                        toast.error('Notifications blocked by browser');
+                      }
+                    }}
+                  >
+                    <BellRing className="w-3 h-3 mr-1" />
+                    Allow
+                  </Button>
+                )}
+                <Switch
+                  checked={notificationsEnabled}
+                  onCheckedChange={setNotificationsEnabled}
+                  disabled={permission === 'denied' || permission === 'unsupported'}
+                />
+              </div>
             </div>
+
+            {permission === 'denied' && (
+              <p className="text-xs text-muted-foreground bg-muted rounded-lg p-3">
+                ⚠️ Notifications are blocked by your browser. To enable them, click the lock icon in your address bar → Site settings → Notifications → Allow.
+              </p>
+            )}
+
+            {permission === 'unsupported' && (
+              <p className="text-xs text-muted-foreground bg-muted rounded-lg p-3">
+                ⚠️ Your browser doesn't support notifications.
+              </p>
+            )}
           </div>
         </motion.div>
 

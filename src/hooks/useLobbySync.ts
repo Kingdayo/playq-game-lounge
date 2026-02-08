@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Lobby, Player } from '@/types/game';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface UseLobbyParams {
   lobbyCode: string | null;
@@ -55,7 +56,10 @@ const toPlayer = (row: {
 });
 
 export function useLobbySync({ lobbyCode, onLobbyUpdate }: UseLobbyParams) {
+  const { notifyPlayerJoined, notifyPlayerLeft, notifyGameStarting, notifyPlayerReady } = useNotifications();
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const prevPlayersRef = useRef<Player[]>([]);
+  const prevStatusRef = useRef<string | null>(null);
 
   const fetchLobby = useCallback(async (code: string) => {
     const { data: lobbyRow, error: lobbyErr } = await supabase
@@ -82,8 +86,41 @@ export function useLobbySync({ lobbyCode, onLobbyUpdate }: UseLobbyParams) {
     }
 
     const players = (playerRows || []).map(toPlayer);
-    onLobbyUpdate(toLobby(lobbyRow, players));
-  }, [onLobbyUpdate]);
+    const lobby = toLobby(lobbyRow, players);
+
+    // Detect player joins/leaves for notifications
+    const prevPlayerIds = new Set(prevPlayersRef.current.map(p => p.id));
+    const currentPlayerIds = new Set(players.map(p => p.id));
+
+    players.forEach(p => {
+      if (!prevPlayerIds.has(p.id) && prevPlayersRef.current.length > 0) {
+        notifyPlayerJoined(p.name, code);
+      }
+    });
+
+    prevPlayersRef.current.forEach(p => {
+      if (!currentPlayerIds.has(p.id)) {
+        notifyPlayerLeft(p.name, code);
+      }
+    });
+
+    // Detect ready state changes
+    players.forEach(p => {
+      const prevPlayer = prevPlayersRef.current.find(pp => pp.id === p.id);
+      if (prevPlayer && !prevPlayer.isReady && p.isReady) {
+        notifyPlayerReady(p.name);
+      }
+    });
+
+    // Detect game starting
+    if (prevStatusRef.current === 'waiting' && lobbyRow.status === 'in-progress') {
+      notifyGameStarting(lobbyRow.game_type);
+    }
+
+    prevPlayersRef.current = players;
+    prevStatusRef.current = lobbyRow.status;
+    onLobbyUpdate(lobby);
+  }, [onLobbyUpdate, notifyPlayerJoined, notifyPlayerLeft, notifyGameStarting, notifyPlayerReady]);
 
   useEffect(() => {
     if (!lobbyCode) {
