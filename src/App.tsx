@@ -14,6 +14,7 @@ import { LudoProvider } from "@/contexts/LudoContext";
 import { DominoesProvider } from "@/contexts/DominoesContext";
 import { PictionaryProvider } from "@/contexts/PictionaryContext";
 import Layout from "@/components/Layout";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import Index from "./pages/Index";
 import Games from "./pages/Games";
 import Lobby from "./pages/Lobby";
@@ -57,6 +58,7 @@ const App = () => (
                         </Route>
                         <Route path="*" element={<NotFound />} />
                       </Routes>
+                      <PWAInstallPrompt />
                     </BrowserRouter>
                   </TooltipProvider>
                   </VoiceProvider>

@@ -309,12 +309,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteRoom = useCallback((roomId: string) => {
     setRooms(prev => prev.filter(r => r.id !== roomId));
-    setRoomMessages(prev => {
-      const next = { ...prev };
-      delete next[roomId];
-      return next;
-    });
-  }, []);
+    if (activeRoomId === roomId) {
+      setCurrentRoomMessages([]);
+      setActiveRoomId(null);
+    }
+  }, [activeRoomId]);
 
   const getUnreadTotal = useCallback(() => {
     return rooms.reduce((acc, room) => acc + room.unreadCount, 0);
