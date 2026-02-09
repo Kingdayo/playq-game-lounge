@@ -48,7 +48,7 @@ export const useVoice = () => {
 };
 
 // Audio Element for remote streams (Required for iOS Safari audio routing)
-function AudioElement({ stream }: { stream: MediaStream }) {
+function AudioElement({ stream, volume = 1 }: { stream: MediaStream; volume?: number }) {
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const attemptPlay = useCallback(async () => {
@@ -74,15 +74,40 @@ function AudioElement({ stream }: { stream: MediaStream }) {
     }
   }, [stream, attemptPlay]);
 
-  // We keep the volume at 0 because AudioContext handles the actual audible playback.
-  // The element just needs to be "playing" in the DOM for iOS to route WebRTC audio correctly.
-  // Using muted={true} can sometimes cause iOS to suspend the media tracks.
+  // Set volume from prop — this is the PRIMARY playback path for Bluetooth/external audio
   useEffect(() => {
     if (audioRef.current) {
-        audioRef.current.muted = false;
-        audioRef.current.volume = 0;
+      audioRef.current.muted = false;
+      audioRef.current.volume = Math.max(0, Math.min(1, volume));
     }
-  }, []);
+  }, [volume]);
+
+  // Handle audio output device changes via setSinkId
+  useEffect(() => {
+    const handleDeviceChange = async () => {
+      const el = audioRef.current as any;
+      if (el && typeof el.setSinkId === 'function') {
+        try {
+          // Setting to empty string routes to the system default output device
+          await el.setSinkId('');
+          console.log('Audio output re-routed to default device');
+        } catch (e) {
+          console.warn('setSinkId failed:', e);
+        }
+      }
+      // Re-trigger play in case the stream stalled on device switch
+      attemptPlay();
+    };
+
+    if (navigator.mediaDevices) {
+      navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+    }
+    return () => {
+      if (navigator.mediaDevices) {
+        navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+      }
+    };
+  }, [attemptPlay]);
 
   return <audio ref={audioRef} autoPlay playsInline className="hidden" aria-hidden="true" />;
 }
@@ -169,10 +194,9 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       source.connect(analyser);
       analysersRef.current[playerId] = analyser;
 
-      // If remote, connect to master gain for playback
-      if (isRemote && masterGainRef.current) {
-        source.connect(masterGainRef.current);
-      }
+      // Remote playback is handled by <audio> elements (not AudioContext)
+      // to ensure proper routing to Bluetooth/external audio devices.
+      // AudioContext is only used here for VAD (voice activity detection).
 
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
@@ -595,6 +619,22 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, [isConnected, resumeAudio]);
 
+  // Auto-resume AudioContext if it gets suspended (e.g. Bluetooth device switch)
+  useEffect(() => {
+    const ctx = audioContextRef.current;
+    if (!ctx) return;
+
+    const handleStateChange = () => {
+      if (ctx.state === 'suspended' && isConnected) {
+        console.log('AudioContext suspended (device change?), resuming...');
+        ctx.resume().catch(e => console.warn('Failed to resume AudioContext:', e));
+      }
+    };
+
+    ctx.addEventListener('statechange', handleStateChange);
+    return () => ctx.removeEventListener('statechange', handleStateChange);
+  }, [isConnected]);
+
   useEffect(() => {
     return () => {
       disconnect();
@@ -622,7 +662,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       <div className="hidden" aria-hidden="true">
         {participants.map(p => {
           if (p.id !== localPlayerRef.current?.id && p.stream) {
-            return <AudioElement key={p.id} stream={p.stream} />;
+            return <AudioElement key={p.id} stream={p.stream} volume={volume / 100} />;
           }
           return null;
         })}
