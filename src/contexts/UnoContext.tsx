@@ -297,18 +297,22 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const newState = { ...gameState };
     newState.selectedColor = color;
 
-    // Now move to next player
-    const topCard = newState.discardPile[newState.discardPile.length - 1];
-    let skipNext = false;
-    if (topCard.value === 'draw4') skipNext = true;
+    // Only move to next player if the current player has already taken their action (e.g. played a wild card)
+    // If it's the start of the game and the first card is wild, they choose color THEN play their turn.
+    if (newState.turnActionTaken) {
+        const topCard = newState.discardPile[newState.discardPile.length - 1];
+        let skipNext = false;
+        if (topCard.value === 'draw4') skipNext = true;
 
-    let nextPlayerIndex = getNextPlayerIndex(playerIndex, newState.players.length, newState.direction);
-    if (skipNext) {
-      nextPlayerIndex = getNextPlayerIndex(nextPlayerIndex, newState.players.length, newState.direction);
+        let nextPlayerIndex = getNextPlayerIndex(playerIndex, newState.players.length, newState.direction);
+        if (skipNext) {
+          nextPlayerIndex = getNextPlayerIndex(nextPlayerIndex, newState.players.length, newState.direction);
+        }
+
+        newState.currentPlayerIndex = nextPlayerIndex;
+        newState.turnActionTaken = false;
     }
 
-    newState.currentPlayerIndex = nextPlayerIndex;
-    newState.turnActionTaken = false;
     newState.lastActionMessage = `${currentPlayer.name} chose ${color}`;
 
     saveGameState(newState);
