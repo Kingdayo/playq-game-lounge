@@ -63,6 +63,7 @@ const PlayerAvatar = memo(({
             sizeClasses[size],
             isActive ? 'bg-gradient-primary neon-glow-cyan' : 'bg-gradient-to-br from-muted to-card'
           )}
+          style={{ willChange: 'transform' }}
           whileHover={{ scale: 1.05 }}
           animate={isActive ? { scale: [1, 1.02, 1] } : {}}
           transition={{ duration: 1, repeat: Infinity }}

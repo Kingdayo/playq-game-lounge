@@ -20,9 +20,11 @@ const Layout: React.FC = () => {
       isInitialMount.current = false;
     } else {
       // Fast navigation transitions
-      triggerLoading(300);
+      triggerLoading(100);
     }
   }, [location.pathname, triggerLoading]);
+
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,32 +33,36 @@ const Layout: React.FC = () => {
       {/* Background effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 bg-gradient-dark" />
-        <motion.div
-          className="absolute top-0 left-1/4 w-[500px] h-[500px] rounded-full bg-primary/5 blur-3xl"
-          style={{ translateZ: 0 }}
-          animate={{
-            x: [0, 100, 0],
-            y: [0, 50, 0],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-        />
-        <motion.div
-          className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full bg-secondary/5 blur-3xl"
-          style={{ translateZ: 0 }}
-          animate={{
-            x: [0, -100, 0],
-            y: [0, -50, 0],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-        />
-        <motion.div
-          className="absolute top-1/2 left-1/2 w-[300px] h-[300px] rounded-full bg-accent/5 blur-3xl"
-          style={{ translateZ: 0 }}
-          animate={{
-            scale: [1, 1.2, 1],
-          }}
-          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-        />
+        {isDesktop && (
+          <>
+            <motion.div
+              className="absolute top-0 left-1/4 w-[500px] h-[500px] rounded-full bg-primary/5 blur-3xl"
+              style={{ translateZ: 0 }}
+              animate={{
+                x: [0, 100, 0],
+                y: [0, 50, 0],
+              }}
+              transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+            />
+            <motion.div
+              className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full bg-secondary/5 blur-3xl"
+              style={{ translateZ: 0 }}
+              animate={{
+                x: [0, -100, 0],
+                y: [0, -50, 0],
+              }}
+              transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+            />
+            <motion.div
+              className="absolute top-1/2 left-1/2 w-[300px] h-[300px] rounded-full bg-accent/5 blur-3xl"
+              style={{ translateZ: 0 }}
+              animate={{
+                scale: [1, 1.2, 1],
+              }}
+              transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          </>
+        )}
       </div>
 
       {/* Sidebar - desktop only */}

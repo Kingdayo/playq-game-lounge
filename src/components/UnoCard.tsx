@@ -78,6 +78,7 @@ const UnoCard = memo(({
     <motion.div
       layout
       layoutId={layoutId}
+      style={{ willChange: 'transform' }}
       initial={{ scale: 0.5, opacity: 0, y: 50 }}
       animate={{ scale: 1, opacity: 1, y: 0 }}
       exit={{ scale: 0.5, opacity: 0, y: -50 }}

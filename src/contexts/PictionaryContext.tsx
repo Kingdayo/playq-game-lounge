@@ -42,6 +42,7 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
   const [gameState, setGameState] = useState<PictionaryGameState | null>(null);
   const gameStateRef = useRef<PictionaryGameState | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const lastPersistenceRef = useRef<number>(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -76,8 +77,10 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
       });
     }
 
-    // Persist to Supabase
-    if (currentLobby?.id && currentPlayer?.isHost) {
+    // Persist to Supabase - Throttle DB updates to once every 3 seconds unless the game is finished
+    const now = Date.now();
+    if (currentLobby?.id && currentPlayer?.isHost && (now - lastPersistenceRef.current > 3000 || newState.status === 'finished')) {
+      lastPersistenceRef.current = now;
       const currentHouseRules = currentLobby.settings?.houseRules || {};
       supabase
         .from('lobbies')

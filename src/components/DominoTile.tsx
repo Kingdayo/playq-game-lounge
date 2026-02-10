@@ -14,7 +14,7 @@ interface DominoTileProps {
   className?: string;
 }
 
-const DominoTile: React.FC<DominoTileProps> = ({
+const DominoTile = React.memo(({
   tile,
   orientation = 'vertical',
   isPlayable = false,
@@ -23,7 +23,7 @@ const DominoTile: React.FC<DominoTileProps> = ({
   size = 'md',
   rotation = 0,
   className
-}) => {
+}: DominoTileProps) => {
   const isHorizontal = orientation === 'horizontal';
 
   const sizeClasses = {
@@ -94,7 +94,7 @@ const DominoTile: React.FC<DominoTileProps> = ({
       } : {}}
       whileTap={isPlayable && !disabled ? { scale: 0.95 } : {}}
       onClick={() => !disabled && onClick?.()}
-      style={{ rotate: rotation }}
+      style={{ rotate: rotation, willChange: 'transform' }}
       className={cn(
         "relative flex flex-col bg-stone-100 rounded-md border-2 border-stone-300 shadow-lg cursor-pointer transition-all overflow-hidden",
         isHorizontal ? "flex-row" : "flex-col",
@@ -117,5 +117,7 @@ const DominoTile: React.FC<DominoTileProps> = ({
     </motion.div>
   );
 };
+
+DominoTile.displayName = 'DominoTile';
 
 export default DominoTile;

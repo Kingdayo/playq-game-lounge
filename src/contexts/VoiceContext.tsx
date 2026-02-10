@@ -251,11 +251,11 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         if (localStreamRef.current || remoteStreamsRef.current[playerId]) {
-          requestAnimationFrame(checkSpeaking);
+          setTimeout(checkSpeaking, 100);
         }
       };
 
-      checkSpeaking();
+      setTimeout(checkSpeaking, 100);
     } catch (e) {
       console.error('Error setting up audio analysis:', e);
     }

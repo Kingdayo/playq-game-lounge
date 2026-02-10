@@ -33,6 +33,7 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [gameState, setGameState] = useState<UnoGameState | null>(null);
   const gameStateRef = useRef<UnoGameState | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const lastPersistenceRef = useRef<number>(0);
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -126,7 +127,10 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     // Also persist to Supabase house_rules for reliable multi-device sync/refreshes
-    if (currentLobby?.id && currentPlayer) {
+    // Throttle DB updates to once every 3 seconds unless the game is finished
+    const now = Date.now();
+    if (currentLobby?.id && currentPlayer && (now - lastPersistenceRef.current > 3000 || newState.status === 'finished')) {
+      lastPersistenceRef.current = now;
       const currentHouseRules = currentLobby.settings?.houseRules || {};
         supabase
             .from('lobbies')
