@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
@@ -61,7 +61,7 @@ interface GamingButtonProps
   pulseEffect?: boolean;
 }
 
-const GamingButton = React.forwardRef<HTMLButtonElement, GamingButtonProps>(
+const GamingButton = memo(React.forwardRef<HTMLButtonElement, GamingButtonProps>(
   ({ className, variant, size, glowEffect = true, pulseEffect = false, children, ...props }, ref) => {
     return (
       <motion.div
@@ -85,7 +85,7 @@ const GamingButton = React.forwardRef<HTMLButtonElement, GamingButtonProps>(
       </motion.div>
     );
   }
-);
+));
 
 GamingButton.displayName = 'GamingButton';
 

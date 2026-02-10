@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { UnoCard as UnoCardType, UnoColor } from '../lib/uno';
 import { cn } from '@/lib/utils';
@@ -28,7 +28,7 @@ const colorMap: Record<UnoColor, string> = {
   wild: 'bg-zinc-900',
 };
 
-const UnoCard: React.FC<UnoCardProps> = ({
+const UnoCard = memo(({
   card,
   onClick,
   disabled,
@@ -36,7 +36,7 @@ const UnoCard: React.FC<UnoCardProps> = ({
   size = 'md',
   isBack = false,
   layoutId
-}) => {
+}: UnoCardProps) => {
   const sizeClasses = {
     sm: 'w-12 h-20 text-xs',
     md: 'w-24 h-40 text-sm',
@@ -123,6 +123,8 @@ const UnoCard: React.FC<UnoCardProps> = ({
       )}
     </motion.div>
   );
-};
+});
+
+UnoCard.displayName = 'UnoCard';
 
 export default UnoCard;

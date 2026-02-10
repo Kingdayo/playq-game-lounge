@@ -169,6 +169,10 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -177,13 +181,14 @@
 }
 
 @layer components {
-  /* Glass card effect */
+  /* Glass card effect - Optimized blur for mobile performance */
   .glass-card {
     background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius);
+    will-change: transform, opacity;
   }
 
   /* Neon glow effects */
@@ -253,6 +258,8 @@
     @apply relative overflow-hidden font-semibold transition-all duration-300;
     background: var(--gradient-primary);
     box-shadow: var(--shadow-neon-cyan);
+    will-change: transform, filter;
+    transform: translateZ(0);
   }
 
   .btn-gaming:hover {
@@ -276,6 +283,8 @@
   /* Game card hover effect */
   .game-card {
     @apply relative overflow-hidden transition-all duration-500;
+    will-change: transform, opacity;
+    transform: translateZ(0);
   }
 
   .game-card:hover {
