@@ -34,7 +34,7 @@ export const COLORS: LudoColor[] = ['red', 'green', 'yellow', 'blue'];
 export const BOARD_CONFIG = {
   red: {
     start: 1,
-    exit: 0,
+    exit: 51,
     safeSquares: [1, 9],
     homeColumn: [
       { r: 7, c: 1 }, { r: 7, c: 2 }, { r: 7, c: 3 }, { r: 7, c: 4 }, { r: 7, c: 5 }, { r: 7, c: 6 }
@@ -45,7 +45,7 @@ export const BOARD_CONFIG = {
   },
   green: {
     start: 14,
-    exit: 13,
+    exit: 12,
     safeSquares: [14, 22],
     homeColumn: [
       { r: 1, c: 7 }, { r: 2, c: 7 }, { r: 3, c: 7 }, { r: 4, c: 7 }, { r: 5, c: 7 }, { r: 6, c: 7 }
@@ -56,7 +56,7 @@ export const BOARD_CONFIG = {
   },
   yellow: {
     start: 27,
-    exit: 26,
+    exit: 25,
     safeSquares: [27, 35],
     homeColumn: [
       { r: 7, c: 13 }, { r: 7, c: 12 }, { r: 7, c: 11 }, { r: 7, c: 10 }, { r: 7, c: 9 }, { r: 7, c: 8 }
@@ -67,7 +67,7 @@ export const BOARD_CONFIG = {
   },
   blue: {
     start: 40,
-    exit: 39,
+    exit: 38,
     safeSquares: [40, 48],
     homeColumn: [
       { r: 13, c: 7 }, { r: 12, c: 7 }, { r: 11, c: 7 }, { r: 10, c: 7 }, { r: 9, c: 7 }, { r: 8, c: 7 }
