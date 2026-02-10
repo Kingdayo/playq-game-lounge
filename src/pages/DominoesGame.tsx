@@ -110,9 +110,17 @@ const DominoesGame: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-950">
         <VoiceControls />
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <h2 className="font-display text-2xl font-bold mb-4 text-white">Connecting to Lobby...</h2>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <h2 className="font-display text-2xl font-bold mb-4 text-white">Game Ended</h2>
+          <p className="text-muted-foreground mb-6">The host has left or the game has been closed.</p>
+          <GamingButton variant="primary" onClick={handleLeave}>
+            Back to Home
+          </GamingButton>
         </motion.div>
       </div>
     );

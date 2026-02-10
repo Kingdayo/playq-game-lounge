@@ -201,6 +201,26 @@ const PictionaryGame: React.FC = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [gameState?.guesses]);
 
+  if (!currentLobby) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-950">
+        <VoiceControls />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <PaletteIcon className="w-16 h-16 text-primary mx-auto mb-4" />
+          <h2 className="font-display text-2xl font-bold mb-4 text-white">Game Ended</h2>
+          <p className="text-muted-foreground mb-6">The host has left or the game has been closed.</p>
+          <GamingButton variant="primary" onClick={handleLeave}>
+            Back to Home
+          </GamingButton>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (!gameState || !currentPlayer || !gameState.players || !gameState.players[gameState.currentDrawerIndex]) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-950">

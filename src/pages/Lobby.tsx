@@ -183,10 +183,10 @@ const Lobby: React.FC = () => {
           className="text-center"
         >
           <h2 className="font-display text-2xl font-bold text-foreground mb-4">
-            Lobby Not Found
+            Game Ended
           </h2>
           <p className="text-muted-foreground mb-6">
-            This lobby doesn't exist or has expired.
+            The host has left or the game has been closed.
           </p>
           <GamingButton variant="primary" onClick={handleLeaveLobby}>
             Back to Home
