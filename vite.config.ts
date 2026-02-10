@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: "auto",
-      includeAssets: ["favicon.ico", "robots.txt", "placeholder.svg", "pwa-192x192.png", "pwa-512x512.png"],
+      includeAssets: ["favicon.ico", "robots.txt", "placeholder.svg", "pwa-192x192.png", "pwa-512x512.png", "sw-push.js"],
       manifest: {
         name: "PlayQ - Multiplayer Games",
         short_name: "PlayQ",
@@ -52,6 +52,7 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        importScripts: ["/sw-push.js"],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
