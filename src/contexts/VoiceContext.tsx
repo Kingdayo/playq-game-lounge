@@ -26,17 +26,32 @@ const ICE_SERVERS: RTCConfiguration = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
-    // TURN servers are required for reliable connections on mobile networks.
-    // To add a TURN server, set the following environment variables in your .env file:
-    // VITE_TURN_SERVER_URL=turn:your-turn-server.com:3478
-    // VITE_TURN_SERVER_USER=your-username
-    // VITE_TURN_SERVER_PASS=your-password
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    // Free TURN relay servers for NAT traversal (required for mobile/carrier networks)
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    // Custom TURN server override via env vars
     ...(import.meta.env.VITE_TURN_SERVER_URL ? [{
       urls: import.meta.env.VITE_TURN_SERVER_URL,
       username: import.meta.env.VITE_TURN_SERVER_USER,
       credential: import.meta.env.VITE_TURN_SERVER_PASS,
     }] : []),
   ],
+  iceTransportPolicy: 'all',
 };
 
 export const useVoice = () => {
