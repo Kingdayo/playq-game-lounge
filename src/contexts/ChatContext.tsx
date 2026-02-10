@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { supabase } from '@/integrations/supabase/client';
 import { useGame } from '@/contexts/GameContext';
 import { useNotifications } from '@/hooks/useNotifications';
+import { sendPushToPlayers } from '@/hooks/usePushNotifications';
 
 export interface ChatRoom {
   id: string;
@@ -199,6 +200,23 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         content: content.trim(),
         is_system: false,
       });
+
+    // Send background push to other participants in this room
+    const { data: participants } = await supabase
+      .from('chat_participants')
+      .select('player_id')
+      .eq('room_id', roomId)
+      .neq('player_id', currentPlayer.id);
+
+    if (participants && participants.length > 0) {
+      const otherPlayerIds = participants.map(p => p.player_id);
+      sendPushToPlayers(otherPlayerIds, {
+        title: `💬 ${currentPlayer.name}`,
+        body: content.trim().length > 100 ? content.trim().substring(0, 100) + '…' : content.trim(),
+        tag: `chat-${roomId}`,
+        data: { type: 'chat', roomId },
+      });
+    }
   }, [currentPlayer]);
 
   const createDirectChat = useCallback(async (targetPlayerId: string, targetName: string, targetAvatar: string): Promise<string> => {

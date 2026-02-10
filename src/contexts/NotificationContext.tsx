@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useNotifications, NotificationPermissionState } from '@/hooks/useNotifications';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useGame } from '@/contexts/GameContext';
 import { toast } from 'sonner';
 
 interface NotificationContextType {
@@ -15,21 +17,30 @@ interface NotificationContextType {
   notifyYourTurn: (gameType: string) => void;
   notifyGameOver: (winnerName: string, gameType: string) => void;
   notifyPlayerReady: (playerName: string) => void;
+  isPushSubscribed: boolean;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const notifications = useNotifications();
+  const { currentPlayer } = useGame();
+  const { isSubscribed, subscribe, vapidPublicKey } = usePushNotifications(currentPlayer?.id);
+
+  // Auto-subscribe to push when permission is granted
+  useEffect(() => {
+    if (notifications.permission === 'granted' && notifications.enabled && !isSubscribed && vapidPublicKey && currentPlayer?.id) {
+      subscribe();
+    }
+  }, [notifications.permission, notifications.enabled, isSubscribed, vapidPublicKey, currentPlayer?.id, subscribe]);
 
   // Prompt for permission on first visit if not yet decided
   useEffect(() => {
     const hasAsked = localStorage.getItem('playq-notification-asked');
     if (!hasAsked && notifications.permission === 'default') {
-      // Delay the prompt slightly so it doesn't fire immediately on page load
       const timer = setTimeout(() => {
         toast('🔔 Enable Notifications?', {
-          description: 'Get notified about messages, game invites, and your turn alerts!',
+          description: 'Get notified about messages, game invites, and your turn alerts even when the app is closed!',
           action: {
             label: 'Enable',
             onClick: async () => {
@@ -37,6 +48,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
               localStorage.setItem('playq-notification-asked', 'true');
               if (result === 'granted') {
                 toast.success('Notifications enabled! 🎉');
+                // Subscribe to push notifications
+                await subscribe();
               } else if (result === 'denied') {
                 toast.info('Notifications blocked. You can enable them in browser settings.');
               }
@@ -53,10 +66,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [notifications.permission, notifications.requestPermission]);
+  }, [notifications.permission, notifications.requestPermission, subscribe]);
 
   return (
-    <NotificationContext.Provider value={notifications}>
+    <NotificationContext.Provider value={{ ...notifications, isPushSubscribed: isSubscribed }}>
       {children}
     </NotificationContext.Provider>
   );
