@@ -116,7 +116,7 @@ const DominoTile = React.memo(({
       </div>
     </motion.div>
   );
-};
+});
 
 DominoTile.displayName = 'DominoTile';
 
