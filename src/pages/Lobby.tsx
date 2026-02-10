@@ -17,7 +17,6 @@ import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import VoiceChat from '@/components/VoiceChat';
-import VoiceControls from '@/components/VoiceControls';
 import ChatPanel from '@/components/ChatPanel';
 import { useGame } from '@/contexts/GameContext';
 import { useLobbyChat } from '@/hooks/useLobbyChat';
@@ -33,7 +32,7 @@ import { Label } from '@/components/ui/label';
 const Lobby: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { currentLobby, currentPlayer, setPlayerReady, leaveLobby, updateLobbySettings, startGame: startLobbyGame } = useGame();
+  const { currentLobby, currentPlayer, setPlayerReady, leaveLobby, updateLobbySettings, startGame: startLobbyGame, isLoadingLobby } = useGame();
   const { playSound, playBGM } = useSound();
   const { messages: lobbyChatMessages, sendMessage: sendLobbyMessage } = useLobbyChat(code);
   const { connect: connectVoice, disconnect: disconnectVoice, participants: voiceParticipants, resumeAudio } = useVoice();
@@ -161,7 +160,7 @@ const Lobby: React.FC = () => {
 
   const currentGame = currentLobby ? gameInfo[currentLobby.gameType] : null;
 
-  if (isLoading) {
+  if (isLoading || isLoadingLobby) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <CircularProgress
@@ -198,7 +197,6 @@ const Lobby: React.FC = () => {
 
   return (
     <div className="min-h-screen p-4 sm:p-8" onClick={resumeAudio} onTouchStart={resumeAudio}>
-      <VoiceControls />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
