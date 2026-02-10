@@ -50,6 +50,10 @@ const UnoGame: React.FC = () => {
 
   const messages = lobbyChatMessages;
 
+  const playerIndex = gameState ? gameState.players.findIndex(p => p.id === currentPlayer?.id) : -1;
+  const isMyTurn = gameState && playerIndex !== -1 && gameState.currentPlayerIndex === playerIndex;
+  const topCard = gameState ? gameState.discardPile[gameState.discardPile.length - 1] : null;
+
   const handleSendMessage = (content: string) => {
     if (!currentPlayer) return;
     sendLobbyMessage(content);
@@ -75,6 +79,13 @@ const UnoGame: React.FC = () => {
     }
   }, [code, currentPlayer?.id, connectVoice, currentPlayer]);
 
+  // Handle initial wild card color selection
+  useEffect(() => {
+    if (gameState && isMyTurn && topCard && topCard.color === 'wild' && !gameState.selectedColor && !showColorPicker && !gameState.turnActionTaken) {
+        setShowColorPicker(true);
+    }
+  }, [gameState, isMyTurn, topCard, showColorPicker]);
+
   // Handle wild card play - show color picker
   const handlePlayCard = (cardId: string) => {
     const card = gameState?.players.find(p => p.id === currentPlayer?.id)?.hand.find(c => c.id === cardId);
@@ -91,6 +102,10 @@ const UnoGame: React.FC = () => {
         playCard(selectedWildCardId, color);
         setShowColorPicker(false);
         setSelectedWildCardId(null);
+    } else {
+        // Handle initial wild card color selection
+        selectWildColor(color);
+        setShowColorPicker(false);
     }
   };
 
@@ -148,8 +163,6 @@ const UnoGame: React.FC = () => {
 
   const myPlayer = gameState.players.find(p => p.id === currentPlayer?.id);
   const otherPlayers = gameState.players.filter(p => p.id !== currentPlayer?.id);
-  const isMyTurn = gameState.currentPlayerIndex === gameState.players.findIndex(p => p.id === currentPlayer?.id);
-  const topCard = gameState.discardPile[gameState.discardPile.length - 1];
 
   return (
     <div className="min-h-screen relative overflow-y-auto bg-zinc-950 p-4 sm:p-8" onClick={resumeAudio} onTouchStart={resumeAudio}>
