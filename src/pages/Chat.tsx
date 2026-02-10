@@ -1,9 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Users, Search, Plus, ChevronLeft, MessageSquare } from 'lucide-react';
+import { Send, Users, Search, Plus, ChevronLeft, MessageSquare, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { useGame } from '@/contexts/GameContext';
 import { useChat, ChatRoom, ChatMessage } from '@/contexts/ChatContext';
@@ -20,12 +30,15 @@ const Chat: React.FC = () => {
     sendMessage,
     markAsRead,
     loadRooms,
+    deleteRoom,
   } = useChat();
 
   const [inputValue, setInputValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const selectedRoom = rooms.find(r => r.id === activeRoomId);
@@ -89,6 +102,14 @@ const Chat: React.FC = () => {
     room.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleDeleteChat = async () => {
+    if (roomToDelete) {
+      await deleteRoom(roomToDelete);
+      setRoomToDelete(null);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   return (
     <div className="h-[calc(100dvh-5rem)] sm:h-screen flex overflow-hidden">
       {/* Sidebar - Room List */}
@@ -131,12 +152,38 @@ const Chat: React.FC = () => {
               </div>
             ) : (
               filteredRooms.map((room) => (
+              <div key={room.id} className="relative overflow-hidden rounded-xl group">
+                {/* Delete Background */}
+                <div className="absolute inset-0 bg-destructive flex items-center justify-end px-6">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white/20"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setRoomToDelete(room.id);
+                      setShowDeleteConfirm(true);
+                    }}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </Button>
+                </div>
+
+                {/* Swipeable Chat Item */}
                 <motion.button
-                  key={room.id}
-                  whileHover={{ x: 4 }}
+                  drag="x"
+                  dragConstraints={{ left: -80, right: 0 }}
+                  dragElastic={0.1}
+                  onDragEnd={(_, info) => {
+                    if (info.offset.x < -60) {
+                      setRoomToDelete(room.id);
+                      setShowDeleteConfirm(true);
+                    }
+                  }}
+                  whileHover={{ x: activeRoomId === room.id ? 0 : 4 }}
                   onClick={() => handleSelectRoom(room.id)}
                   className={cn(
-                    "w-full p-3 rounded-xl text-left transition-colors",
+                    "relative w-full p-3 rounded-xl text-left transition-colors bg-card",
                     activeRoomId === room.id
                       ? 'bg-primary/10 border border-primary/20'
                       : 'hover:bg-muted'
@@ -173,6 +220,7 @@ const Chat: React.FC = () => {
                     )}
                   </div>
                 </motion.button>
+              </div>
               ))
             )}
           </div>
@@ -331,6 +379,27 @@ const Chat: React.FC = () => {
         onClose={() => setIsNewChatOpen(false)}
         onChatCreated={handleChatCreated}
       />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this conversation? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRoomToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteChat}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

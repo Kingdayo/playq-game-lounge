@@ -41,6 +41,7 @@ interface ChatContextType {
   searchUsers: (query: string) => Promise<Array<{ player_id: string; name: string; avatar: string }>>;
   getUnreadTotal: () => number;
   markAsRead: (roomId: string) => void;
+  deleteRoom: (roomId: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -327,13 +328,27 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRooms(prev => prev.map(r => r.id === roomId ? { ...r, unreadCount: 0 } : r));
   }, []);
 
-  const deleteRoom = useCallback((roomId: string) => {
-    setRooms(prev => prev.filter(r => r.id !== roomId));
-    if (activeRoomId === roomId) {
-      setCurrentRoomMessages([]);
-      setActiveRoomId(null);
+  const deleteRoom = useCallback(async (roomId: string) => {
+    if (!currentPlayer) return;
+
+    try {
+      const { error } = await supabase
+        .from('chat_participants')
+        .delete()
+        .eq('room_id', roomId)
+        .eq('player_id', currentPlayer.id);
+
+      if (error) throw error;
+
+      setRooms(prev => prev.filter(r => r.id !== roomId));
+      if (activeRoomId === roomId) {
+        setCurrentRoomMessages([]);
+        setActiveRoomId(null);
+      }
+    } catch (error) {
+      console.error('Error deleting room:', error);
     }
-  }, [activeRoomId]);
+  }, [activeRoomId, currentPlayer]);
 
   const getUnreadTotal = useCallback(() => {
     return rooms.reduce((acc, room) => acc + room.unreadCount, 0);
@@ -433,6 +448,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       searchUsers,
       getUnreadTotal,
       markAsRead,
+      deleteRoom,
       isLoading,
     }}>
       {children}
