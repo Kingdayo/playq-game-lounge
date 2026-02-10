@@ -16,18 +16,28 @@ import { DominoesProvider } from "@/contexts/DominoesContext";
 import { PictionaryProvider } from "@/contexts/PictionaryContext";
 import Layout from "@/components/Layout";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
-import Index from "./pages/Index";
-import Games from "./pages/Games";
-import Lobby from "./pages/Lobby";
-import Settings from "./pages/Settings";
-import Chat from "./pages/Chat";
-import UnoGame from "./pages/UnoGame";
-import LudoGame from "./pages/LudoGame";
-import DominoesGame from "./pages/DominoesGame";
-import PictionaryGame from "./pages/PictionaryGame";
-import NotFound from "./pages/NotFound";
+import { Suspense, lazy } from "react";
+
+// Lazy load pages for better performance
+const Index = lazy(() => import("./pages/Index"));
+const Games = lazy(() => import("./pages/Games"));
+const Lobby = lazy(() => import("./pages/Lobby"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Chat = lazy(() => import("./pages/Chat"));
+const UnoGame = lazy(() => import("./pages/UnoGame"));
+const LudoGame = lazy(() => import("./pages/LudoGame"));
+const DominoesGame = lazy(() => import("./pages/DominoesGame"));
+const PictionaryGame = lazy(() => import("./pages/PictionaryGame"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
+
+// Simple loading fallback
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -46,20 +56,22 @@ const App = () => (
                     <Toaster />
                     <Sonner />
                     <BrowserRouter>
-                      <Routes>
-                        <Route element={<Layout />}>
-                          <Route path="/" element={<Index />} />
-                          <Route path="/games" element={<Games />} />
-                          <Route path="/lobby/:code" element={<Lobby />} />
-                          <Route path="/game/uno/:code" element={<UnoGame />} />
-                          <Route path="/game/ludo/:code" element={<LudoGame />} />
-                          <Route path="/game/dominoes/:code" element={<DominoesGame />} />
-                          <Route path="/game/pictionary/:code" element={<PictionaryGame />} />
-                          <Route path="/settings" element={<Settings />} />
-                          <Route path="/chat" element={<Chat />} />
-                        </Route>
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
+                      <Suspense fallback={<PageLoader />}>
+                        <Routes>
+                          <Route element={<Layout />}>
+                            <Route path="/" element={<Index />} />
+                            <Route path="/games" element={<Games />} />
+                            <Route path="/lobby/:code" element={<Lobby />} />
+                            <Route path="/game/uno/:code" element={<UnoGame />} />
+                            <Route path="/game/ludo/:code" element={<LudoGame />} />
+                            <Route path="/game/dominoes/:code" element={<DominoesGame />} />
+                            <Route path="/game/pictionary/:code" element={<PictionaryGame />} />
+                            <Route path="/settings" element={<Settings />} />
+                            <Route path="/chat" element={<Chat />} />
+                          </Route>
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </Suspense>
                       <PWAInstallPrompt />
                     </BrowserRouter>
                   </TooltipProvider>

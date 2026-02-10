@@ -15,10 +15,12 @@ const Layout: React.FC = () => {
   // Handle initial page load and tab navigation loading
   useEffect(() => {
     if (isInitialMount.current) {
-      triggerLoading(6000);
+      // Significantly reduced initial loading for faster PWA feel
+      triggerLoading(800);
       isInitialMount.current = false;
     } else {
-      triggerLoading(2000);
+      // Fast navigation transitions
+      triggerLoading(300);
     }
   }, [location.pathname, triggerLoading]);
 
@@ -31,6 +33,7 @@ const Layout: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-dark" />
         <motion.div
           className="absolute top-0 left-1/4 w-[500px] h-[500px] rounded-full bg-primary/5 blur-3xl"
+          style={{ translateZ: 0 }}
           animate={{
             x: [0, 100, 0],
             y: [0, 50, 0],
@@ -39,6 +42,7 @@ const Layout: React.FC = () => {
         />
         <motion.div
           className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full bg-secondary/5 blur-3xl"
+          style={{ translateZ: 0 }}
           animate={{
             x: [0, -100, 0],
             y: [0, -50, 0],
@@ -47,6 +51,7 @@ const Layout: React.FC = () => {
         />
         <motion.div
           className="absolute top-1/2 left-1/2 w-[300px] h-[300px] rounded-full bg-accent/5 blur-3xl"
+          style={{ translateZ: 0 }}
           animate={{
             scale: [1, 1.2, 1],
           }}

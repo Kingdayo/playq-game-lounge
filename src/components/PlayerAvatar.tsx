@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -21,7 +21,7 @@ const sizeClasses = {
   xl: 'w-20 h-20 text-3xl',
 };
 
-const PlayerAvatar: React.FC<PlayerAvatarProps> = ({
+const PlayerAvatar = memo(({
   avatar,
   name,
   isActive = false,
@@ -31,7 +31,7 @@ const PlayerAvatar: React.FC<PlayerAvatarProps> = ({
   size = 'md',
   showName = true,
   className,
-}) => {
+}: PlayerAvatarProps) => {
   return (
     <div className={cn('flex flex-col items-center gap-2', className)}>
       <div className="relative">
@@ -108,6 +108,8 @@ const PlayerAvatar: React.FC<PlayerAvatarProps> = ({
       )}
     </div>
   );
-};
+});
+
+PlayerAvatar.displayName = 'PlayerAvatar';
 
 export default PlayerAvatar;

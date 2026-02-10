@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { LucideIcon } from 'lucide-react';
 
@@ -12,7 +12,7 @@ interface GameCardProps {
   onClick: () => void;
 }
 
-const GameCard: React.FC<GameCardProps> = ({
+const GameCard = memo(({
   title,
   description,
   icon: Icon,
@@ -20,7 +20,7 @@ const GameCard: React.FC<GameCardProps> = ({
   gradient,
   glowColor,
   onClick,
-}) => {
+}: GameCardProps) => {
   return (
     <motion.div
       whileHover={{ scale: 1.03, y: -5 }}
@@ -125,6 +125,8 @@ const GameCard: React.FC<GameCardProps> = ({
       </div>
     </motion.div>
   );
-};
+});
+
+GameCard.displayName = 'GameCard';
 
 export default GameCard;
