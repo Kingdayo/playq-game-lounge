@@ -39,6 +39,7 @@ const LudoGame: React.FC = () => {
   } = useLudo();
 
   const [showChat, setShowChat] = React.useState(false);
+  const [rollingDiceValue, setRollingDiceValue] = React.useState(1);
 
   const messages = lobbyChatMessages;
 
@@ -59,6 +60,17 @@ const LudoGame: React.FC = () => {
       connectVoice(`voice-lobby-${code}`, currentPlayer);
     }
   }, [code, currentPlayer?.id, connectVoice, currentPlayer]);
+
+  // Dice rolling visual effect
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (gameState?.isRolling) {
+      interval = setInterval(() => {
+        setRollingDiceValue(Math.floor(Math.random() * 6) + 1);
+      }, 100);
+    }
+    return () => clearInterval(interval);
+  }, [gameState?.isRolling]);
 
   if (isLoadingLobby) {
     return (
@@ -360,16 +372,20 @@ const LudoGame: React.FC = () => {
                         {gameState.isRolling ? (
                             <motion.div
                                 key="rolling"
-                                initial={{ rotateX: 0, rotateY: 0 }}
+                                initial={{ rotateX: 0, rotateY: 0, scale: 0.8 }}
                                 animate={{
-                                    rotateX: [0, 90, 180, 270, 360],
-                                    rotateY: [0, 180, 0, 180, 360],
-                                    scale: [1, 1.1, 1]
+                                    rotateX: [0, 180, 360, 540, 720],
+                                    rotateY: [0, 90, 270, 450, 720],
+                                    scale: [1, 1.2, 1],
                                 }}
-                                transition={{ repeat: Infinity, duration: 0.6, ease: "easeInOut" }}
-                                className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center border-2 border-primary/50 shadow-[0_0_20px_rgba(var(--primary),0.3)]"
+                                transition={{
+                                    repeat: Infinity,
+                                    duration: 0.5,
+                                    ease: "linear"
+                                }}
+                                className="w-16 h-16 bg-white text-zinc-950 rounded-xl flex items-center justify-center border-2 border-primary shadow-[0_0_25px_rgba(var(--primary),0.5)] text-3xl font-black ring-4 ring-primary/20"
                             >
-                                <Dices className="w-10 h-10 text-primary" />
+                                {rollingDiceValue}
                             </motion.div>
                         ) : (
                             <motion.div
