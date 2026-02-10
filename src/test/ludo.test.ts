@@ -69,16 +69,27 @@ describe('Ludo Logic', () => {
   it('should move into home column', () => {
     let state = initializeGame('test', players);
 
-    // Red exit is 0.
-    state.players[0].tokens[0].position = 51; // Last square before 0
+    // Red exit is now 51.
+    state.players[0].tokens[0].position = 50; // One square before exit
     state.diceValue = 1;
     state = moveToken(state, state.players[0].tokens[0].id);
-    expect(state.players[0].tokens[0].position).toBe(0);
+    expect(state.players[0].tokens[0].position).toBe(51);
 
     state.currentPlayerIndex = 0;
     state.diceValue = 1;
     state = moveToken(state, state.players[0].tokens[0].id);
-    expect(state.players[0].tokens[0].position).toBe(52); // Home column index 0
+    expect(state.players[0].tokens[0].position).toBe(52); // Home column index 0 (enters from 51)
+  });
+
+  it('should enter home column with remaining moves', () => {
+    let state = initializeGame('test', players);
+
+    // Red exit is 51.
+    state.players[0].tokens[0].position = 51;
+    state.diceValue = 3;
+    state = moveToken(state, state.players[0].tokens[0].id);
+    // 51 is exit, so 1st move enters home path (52), then 2 moves more -> 54
+    expect(state.players[0].tokens[0].position).toBe(54);
   });
 
   it('should finish token on exact roll', () => {
