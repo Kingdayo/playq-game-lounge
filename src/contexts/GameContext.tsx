@@ -277,16 +277,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       .select('*')
       .eq('lobby_id', currentLobby.id);
 
-    if (!remaining || remaining.length === 0) {
-      // Delete the empty lobby
+    if (!remaining || remaining.length === 0 || currentPlayer.isHost) {
+      // Delete the lobby if it's empty or if the host is leaving
+      // This ends the game for all participants
       await supabase.from('lobbies').delete().eq('id', currentLobby.id);
-    } else if (currentPlayer.isHost) {
-      // Assign new host to the first remaining player
-      const newHost = remaining[0];
-      await supabase
-        .from('lobby_players')
-        .update({ is_host: true, is_ready: true })
-        .eq('id', newHost.id);
     }
 
     updateCurrentPlayer({ ...currentPlayer, isHost: false, isReady: false });

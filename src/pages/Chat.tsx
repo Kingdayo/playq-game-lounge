@@ -174,13 +174,15 @@ const Chat: React.FC = () => {
                   drag="x"
                   dragConstraints={{ left: -80, right: 0 }}
                   dragElastic={0.1}
+                  animate={{ x: roomToDelete === room.id ? -80 : 0 }}
+                  transition={{ type: "spring", damping: 20, stiffness: 300 }}
                   onDragEnd={(_, info) => {
                     if (info.offset.x < -60) {
                       setRoomToDelete(room.id);
                       setShowDeleteConfirm(true);
                     }
                   }}
-                  whileHover={{ x: activeRoomId === room.id ? 0 : 4 }}
+                  whileHover={{ x: roomToDelete === room.id ? -80 : (activeRoomId === room.id ? 0 : 4) }}
                   onClick={() => handleSelectRoom(room.id)}
                   className={cn(
                     "relative w-full p-3 rounded-xl text-left transition-colors bg-card",
