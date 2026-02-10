@@ -17,7 +17,7 @@ const VoiceControls: React.FC = () => {
   if (!isConnected) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] flex flex-col items-end gap-2">
+    <div className="fixed bottom-32 right-4 z-[60] flex flex-col items-end gap-2">
       <AnimatePresence>
         {isOpen && (
           <motion.div
