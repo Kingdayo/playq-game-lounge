@@ -22,9 +22,9 @@ export const useSound = () => {
 };
 
 const SOUNDS = {
-  dice: 'https://assets.mixkit.co/active_storage/sfx/1012/1012-preview.mp3',
-  card: 'https://assets.mixkit.co/active_storage/sfx/2011/2011-preview.mp3',
-  move: 'https://assets.mixkit.co/active_storage/sfx/2561/2561-preview.mp3',
+  dice: 'https://assets.mixkit.co/active_storage/sfx/2561/2561-preview.mp3',
+  card: 'https://assets.mixkit.co/active_storage/sfx/1012/1012-preview.mp3',
+  move: 'https://assets.mixkit.co/active_storage/sfx/2011/2011-preview.mp3',
   win: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
   error: 'https://assets.mixkit.co/active_storage/sfx/2567/2567-preview.mp3',
   success: 'https://assets.mixkit.co/active_storage/sfx/1103/1103-preview.mp3',
