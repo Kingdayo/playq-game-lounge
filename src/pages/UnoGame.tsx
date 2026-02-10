@@ -30,7 +30,7 @@ import { cn } from '@/lib/utils';
 const UnoGame: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { currentLobby, currentPlayer, leaveLobby } = useGame();
+  const { currentLobby, currentPlayer, leaveLobby, isLoadingLobby } = useGame();
   const { messages: lobbyChatMessages, sendMessage: sendLobbyMessage } = useLobbyChat(code);
   const { participants: voiceParticipants, resumeAudio, connect: connectVoice, disconnect: disconnectVoice } = useVoice();
   const {
@@ -94,10 +94,18 @@ const UnoGame: React.FC = () => {
     }
   };
 
+  if (isLoadingLobby) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-950">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-muted-foreground">Connecting to game...</p>
+      </div>
+    );
+  }
+
   if (!currentLobby) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-zinc-950">
-        <VoiceControls />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

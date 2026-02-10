@@ -383,7 +383,10 @@ const Chat: React.FC = () => {
       />
 
       {/* Delete Confirmation */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => {
+        setShowDeleteConfirm(open);
+        if (!open) setRoomToDelete(null);
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Conversation</AlertDialogTitle>

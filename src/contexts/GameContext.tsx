@@ -14,6 +14,7 @@ interface GameContextType {
   setPlayerReady: (ready: boolean) => Promise<void>;
   updateLobbySettings: (settings: Partial<GameSettings>) => Promise<void>;
   startGame: () => Promise<void>;
+  isLoadingLobby: boolean;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -70,9 +71,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
   const [currentLobby, setCurrentLobby] = useState<Lobby | null>(null);
   const [activeLobbyCode, setActiveLobbyCode] = useState<string | null>(null);
+  const [isLoadingLobby, setIsLoadingLobby] = useState(false);
 
   // Realtime lobby sync
   const handleLobbyUpdate = useCallback((lobby: Lobby | null) => {
+    setIsLoadingLobby(false);
     if (lobby) {
       setCurrentLobby(lobby);
     } else if (activeLobbyCode) {
@@ -105,6 +108,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         if (match) {
             const code = match[2].toUpperCase();
             if (code !== activeLobbyCode) {
+                setIsLoadingLobby(true);
                 setActiveLobbyCode(code);
             }
         }
@@ -353,6 +357,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         setPlayerReady,
         updateLobbySettings,
         startGame,
+        isLoadingLobby,
       }}
     >
       {children}
