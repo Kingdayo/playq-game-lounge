@@ -60,8 +60,20 @@ export function useLobbySync({ lobbyCode, onLobbyUpdate }: UseLobbyParams) {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const prevPlayersRef = useRef<Player[]>([]);
   const prevStatusRef = useRef<string | null>(null);
+  const lastFetchRef = useRef<number>(0);
 
   const fetchLobby = useCallback(async (code: string) => {
+    // Throttle fetches to at most once per 1000ms to reduce network load
+    const now = Date.now();
+    if (now - lastFetchRef.current < 1000) {
+      // If we're throttled, schedule a retry
+      setTimeout(() => {
+        if (lobbyCode) fetchLobby(lobbyCode);
+      }, 1000);
+      return;
+    }
+    lastFetchRef.current = now;
+
     const { data: lobbyRow, error: lobbyErr } = await supabase
       .from('lobbies')
       .select('*')

@@ -16,9 +16,10 @@ import { useLobbyChat } from '@/hooks/useLobbyChat';
 import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { LudoColor, BOARD_CONFIG, COLORS, GLOBAL_SAFE_SQUARES, getLegalMoves, LudoToken } from '@/lib/ludo';
+import { LudoColor, BOARD_CONFIG, COLORS, GLOBAL_SAFE_SQUARES, getLegalMoves, LudoToken as LudoTokenType } from '@/lib/ludo';
 import Confetti from '@/components/Confetti';
 import PlayerAvatar from '@/components/PlayerAvatar';
+import LudoToken from '@/components/LudoToken';
 import { useVoice } from '@/contexts/VoiceContext';
 import VoiceControls from '@/components/VoiceControls';
 import ChatPanel from '@/components/ChatPanel';
@@ -128,142 +129,18 @@ const LudoGame: React.FC = () => {
   const isMyTurn = gameState.currentPlayerIndex === myPlayerIndex;
   const legalMoves = isMyTurn ? getLegalMoves(gameState) : [];
 
-  const getTokensAtPosition = (type: 'main' | 'homeCol' | 'homeArea' | 'finish', posIdx: number, color?: LudoColor) => {
-    const tokens: LudoToken[] = [];
+  const getTokensAtPosition = React.useCallback((type: 'main' | 'homeCol' | 'homeArea' | 'finish', posIdx: number, color?: LudoColor) => {
+    const tokens: LudoTokenType[] = [];
+    if (!gameState) return tokens;
     gameState.players.forEach(p => {
       p.tokens.forEach(t => {
         if (type === 'main' && t.position === posIdx) tokens.push(t);
         else if (type === 'homeCol' && t.position === 52 + posIdx && t.color === color) tokens.push(t);
         else if (type === 'homeArea' && t.position === -1 && t.color === color && t.index === posIdx) tokens.push(t);
-        else if (type === 'finish' && t.position === 58) {
-            // Finished tokens are handled in the center cell render
-        }
       });
     });
     return tokens;
-  };
-
-  const renderCell = (r: number, c: number) => {
-    // Determine cell type
-    const cellClass = "w-full h-full border border-white/10 flex items-center justify-center relative";
-    let bgClass = "bg-zinc-800/50";
-    let content: React.ReactNode = null;
-    const onClick: (() => void) | undefined = undefined;
-
-    // Check Home Areas
-    for (const color of COLORS) {
-      const area = BOARD_CONFIG[color].homeArea;
-      const areaIdx = area.findIndex(cell => cell.r === r && cell.c === c);
-      if (areaIdx !== -1) {
-        bgClass = color === 'red' ? 'bg-red-500/20' : color === 'green' ? 'bg-green-500/20' : color === 'yellow' ? 'bg-yellow-500/20' : 'bg-blue-500/20';
-        const tokens = getTokensAtPosition('homeArea', areaIdx, color);
-        content = tokens.map(t => (
-            <Token
-                key={t.id}
-                token={t}
-                isSelectable={legalMoves.includes(t.id)}
-                onClick={() => selectToken(t.id)}
-            />
-        ));
-      }
-
-      // Home base background
-      if (r >= (color === 'red' || color === 'green' ? 0 : 9) &&
-          r <= (color === 'red' || color === 'green' ? 5 : 14) &&
-          c >= (color === 'red' || color === 'blue' ? 0 : 9) &&
-          c <= (color === 'red' || color === 'blue' ? 5 : 14)) {
-          bgClass = color === 'red' ? 'bg-red-500/10' : color === 'green' ? 'bg-green-500/10' : color === 'yellow' ? 'bg-yellow-500/10' : 'bg-blue-500/10';
-      }
-    }
-
-    // Check Main Track
-    const trackIdx = BOARD_CONFIG.mainTrack.findIndex(cell => cell.r === r && cell.c === c);
-    if (trackIdx !== -1) {
-      bgClass = "bg-zinc-700/50";
-      if (GLOBAL_SAFE_SQUARES.includes(trackIdx)) {
-          bgClass = "bg-zinc-600/80";
-          content = <Info className="w-2 h-2 text-white/20 absolute top-0.5 right-0.5" />;
-      }
-
-      // Color starting squares
-      for (const color of COLORS) {
-          if (BOARD_CONFIG[color].start === trackIdx) {
-              bgClass = color === 'red' ? 'bg-red-500/60' : color === 'green' ? 'bg-green-500/60' : color === 'yellow' ? 'bg-yellow-500/60' : 'bg-blue-500/60';
-          }
-      }
-
-      const tokens = getTokensAtPosition('main', trackIdx);
-      content = (
-          <div className="flex flex-wrap items-center justify-center gap-0.5">
-              {tokens.map(t => (
-                <Token
-                    key={t.id}
-                    token={t}
-                    isSelectable={legalMoves.includes(t.id)}
-                    onClick={() => selectToken(t.id)}
-                    isStacked={tokens.length > 1}
-                />
-              ))}
-          </div>
-      );
-    }
-
-    // Check Home Columns
-    for (const color of COLORS) {
-      const homeColIdx = BOARD_CONFIG[color].homeColumn.findIndex(cell => cell.r === r && cell.c === c);
-      if (homeColIdx !== -1) {
-        bgClass = color === 'red' ? 'bg-red-500/40' : color === 'green' ? 'bg-green-500/40' : color === 'yellow' ? 'bg-yellow-500/40' : 'bg-blue-500/40';
-        const tokens = getTokensAtPosition('homeCol', homeColIdx, color);
-        content = (
-            <div className="flex flex-wrap items-center justify-center gap-0.5">
-                {tokens.map(t => (
-                  <Token
-                      key={t.id}
-                      token={t}
-                      isSelectable={legalMoves.includes(t.id)}
-                      onClick={() => selectToken(t.id)}
-                      isStacked={tokens.length > 1}
-                  />
-                ))}
-            </div>
-        );
-      }
-    }
-
-    // Center / Finish
-    if (r >= 6 && r <= 8 && c >= 6 && c <= 8) {
-        if (r === 7 && c === 7) {
-            bgClass = "bg-gradient-to-br from-red-500 via-green-500 to-blue-500";
-            const finishedTokens = gameState.players.flatMap(p => p.tokens.filter(t => t.position === 58));
-            content = (
-                <div className="grid grid-cols-2 gap-0.5">
-                    {COLORS.map(color => {
-                        const count = finishedTokens.filter(t => t.color === color).length;
-                        if (count === 0) return null;
-                        const bgColor = color === 'red' ? 'bg-red-500' : color === 'green' ? 'bg-green-500' : color === 'yellow' ? 'bg-yellow-500' : 'bg-blue-500';
-                        return (
-                            <div key={color} className={cn("w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-bold text-white", bgColor)}>
-                                {count}
-                            </div>
-                        );
-                    })}
-                </div>
-            );
-        } else {
-            // Triangle parts of the center
-            if (r === 6 && c === 7) bgClass = "bg-green-500/60";
-            if (r === 8 && c === 7) bgClass = "bg-blue-500/60";
-            if (r === 7 && c === 6) bgClass = "bg-red-500/60";
-            if (r === 7 && c === 8) bgClass = "bg-yellow-500/60";
-        }
-    }
-
-    return (
-      <div key={`${r}-${c}`} className={cn(cellClass, bgClass)} onClick={onClick}>
-        {content}
-      </div>
-    );
-  };
+  }, [gameState]);
 
   return (
     <div className="min-h-screen bg-zinc-950 p-2 sm:p-8 flex flex-col items-center" onClick={resumeAudio} onTouchStart={resumeAudio}>
@@ -359,7 +236,21 @@ const LudoGame: React.FC = () => {
                         {Array.from({ length: 15 * 15 }).map((_, i) => {
                             const r = Math.floor(i / 15);
                             const c = i % 15;
-                            return renderCell(r, c);
+                            const finishedTokens = (r === 7 && c === 7)
+                                ? gameState.players.flatMap(p => p.tokens.filter(t => t.position === 58))
+                                : [];
+
+                            return (
+                                <LudoCell
+                                    key={`${r}-${c}`}
+                                    r={r}
+                                    c={c}
+                                    legalMoves={legalMoves}
+                                    onSelectToken={selectToken}
+                                    getTokensAtPosition={getTokensAtPosition}
+                                    finishedTokens={finishedTokens}
+                                />
+                            );
                         })}
                     </div>
                 </LayoutGroup>
@@ -501,64 +392,136 @@ const LudoGame: React.FC = () => {
   );
 };
 
-interface TokenProps {
-    token: LudoToken;
-    isSelectable: boolean;
-    onClick: () => void;
-    isStacked?: boolean;
+
+interface LudoCellProps {
+  r: number;
+  c: number;
+  legalMoves: string[];
+  onSelectToken: (id: string) => void;
+  getTokensAtPosition: (type: 'main' | 'homeCol' | 'homeArea' | 'finish', posIdx: number, color?: LudoColor) => LudoTokenType[];
+  finishedTokens: LudoTokenType[];
 }
 
-const Token: React.FC<TokenProps> = ({ token, isSelectable, onClick, isStacked }) => {
-    const bgColor = token.color === 'red' ? 'bg-red-500' : token.color === 'green' ? 'bg-green-500' : token.color === 'yellow' ? 'bg-yellow-500' : 'bg-blue-500';
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (isSelectable && (e.key === 'Enter' || e.key === ' ')) {
-            e.preventDefault();
-            onClick();
-        }
-    };
+const LudoCell = React.memo(({ r, c, legalMoves, onSelectToken, getTokensAtPosition, finishedTokens }: LudoCellProps) => {
+  // Determine cell type
+  const cellClass = "w-full h-full border border-white/10 flex items-center justify-center relative";
+  let bgClass = "bg-zinc-800/50";
+  let content: React.ReactNode = null;
 
-    return (
-        <motion.div
-            layoutId={token.id}
-            transition={{
-                type: "spring",
-                damping: 25,
-                stiffness: 300,
-                mass: 0.8
-            }}
-            role="button"
-            tabIndex={isSelectable ? 0 : -1}
-            aria-label={`Token ${token.index + 1} (${token.color})`}
-            whileHover={isSelectable ? {
-                scale: 1.2,
-                z: 10,
-                filter: "brightness(1.2) drop-shadow(0 0 8px currentColor)"
-            } : {}}
-            whileTap={isSelectable ? { scale: 0.9 } : {}}
-            onClick={(e) => {
-                if (isSelectable) {
-                    e.stopPropagation();
-                    onClick();
-                }
-            }}
-            onKeyDown={handleKeyDown}
-            className={cn(
-                "w-4 h-4 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full border-2 border-white/40 shadow-lg cursor-pointer focus:outline-none relative group",
-                bgColor,
-                isSelectable && "ring-4 ring-primary ring-offset-2 ring-offset-zinc-900 z-10",
-                isStacked && "w-3 h-3 sm:w-6 sm:h-6 md:w-7 md:h-7 border-1"
-            )}
-        >
-            {isSelectable && (
-                <motion.div
-                    layoutId={`${token.id}-glow`}
-                    className="absolute -inset-2 bg-primary/30 rounded-full blur-md -z-10"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 1.5 }}
-                />
-            )}
-        </motion.div>
+  // Check Home Areas
+  for (const color of COLORS) {
+    const area = BOARD_CONFIG[color].homeArea;
+    const areaIdx = area.findIndex(cell => cell.r === r && cell.c === c);
+    if (areaIdx !== -1) {
+      bgClass = color === 'red' ? 'bg-red-500/20' : color === 'green' ? 'bg-green-500/20' : color === 'yellow' ? 'bg-yellow-500/20' : 'bg-blue-500/20';
+      const tokens = getTokensAtPosition('homeArea', areaIdx, color);
+      content = tokens.map(t => (
+          <LudoToken
+              key={t.id}
+              token={t}
+              isSelectable={legalMoves.includes(t.id)}
+              onClick={() => onSelectToken(t.id)}
+          />
+      ));
+    }
+
+    // Home base background
+    if (r >= (color === 'red' || color === 'green' ? 0 : 9) &&
+        r <= (color === 'red' || color === 'green' ? 5 : 14) &&
+        c >= (color === 'red' || color === 'blue' ? 0 : 9) &&
+        c <= (color === 'red' || color === 'blue' ? 5 : 14)) {
+        bgClass = color === 'red' ? 'bg-red-500/10' : color === 'green' ? 'bg-green-500/10' : color === 'yellow' ? 'bg-yellow-500/10' : 'bg-blue-500/10';
+    }
+  }
+
+  // Check Main Track
+  const trackIdx = BOARD_CONFIG.mainTrack.findIndex(cell => cell.r === r && cell.c === c);
+  if (trackIdx !== -1) {
+    bgClass = "bg-zinc-700/50";
+    if (GLOBAL_SAFE_SQUARES.includes(trackIdx)) {
+        bgClass = "bg-zinc-600/80";
+        content = <Info className="w-2 h-2 text-white/20 absolute top-0.5 right-0.5" />;
+    }
+
+    // Color starting squares
+    for (const color of COLORS) {
+        if (BOARD_CONFIG[color].start === trackIdx) {
+            bgClass = color === 'red' ? 'bg-red-500/60' : color === 'green' ? 'bg-green-500/60' : color === 'yellow' ? 'bg-yellow-500/60' : 'bg-blue-500/60';
+        }
+    }
+
+    const tokens = getTokensAtPosition('main', trackIdx);
+    content = (
+        <div className="flex flex-wrap items-center justify-center gap-0.5">
+            {tokens.map(t => (
+              <LudoToken
+                  key={t.id}
+                  token={t}
+                  isSelectable={legalMoves.includes(t.id)}
+                  onClick={() => onSelectToken(t.id)}
+                  isStacked={tokens.length > 1}
+              />
+            ))}
+        </div>
     );
-};
+  }
+
+  // Check Home Columns
+  for (const color of COLORS) {
+    const homeColIdx = BOARD_CONFIG[color].homeColumn.findIndex(cell => cell.r === r && cell.c === c);
+    if (homeColIdx !== -1) {
+      bgClass = color === 'red' ? 'bg-red-500/40' : color === 'green' ? 'bg-green-500/40' : color === 'yellow' ? 'bg-yellow-500/40' : 'bg-blue-500/40';
+      const tokens = getTokensAtPosition('homeCol', homeColIdx, color);
+      content = (
+          <div className="flex flex-wrap items-center justify-center gap-0.5">
+              {tokens.map(t => (
+                <LudoToken
+                    key={t.id}
+                    token={t}
+                    isSelectable={legalMoves.includes(t.id)}
+                    onClick={() => onSelectToken(t.id)}
+                    isStacked={tokens.length > 1}
+                />
+              ))}
+          </div>
+      );
+    }
+  }
+
+  // Center / Finish
+  if (r >= 6 && r <= 8 && c >= 6 && c <= 8) {
+      if (r === 7 && c === 7) {
+          bgClass = "bg-gradient-to-br from-red-500 via-green-500 to-blue-500";
+          content = (
+              <div className="grid grid-cols-2 gap-0.5">
+                  {COLORS.map(color => {
+                      const count = finishedTokens.filter(t => t.color === color).length;
+                      if (count === 0) return null;
+                      const bgColor = color === 'red' ? 'bg-red-500' : color === 'green' ? 'bg-green-500' : color === 'yellow' ? 'bg-yellow-500' : 'bg-blue-500';
+                      return (
+                          <div key={color} className={cn("w-3 h-3 rounded-full flex items-center justify-center text-[8px] font-bold text-white", bgColor)}>
+                              {count}
+                          </div>
+                      );
+                  })}
+              </div>
+          );
+      } else {
+          // Triangle parts of the center
+          if (r === 6 && c === 7) bgClass = "bg-green-500/60";
+          if (r === 8 && c === 7) bgClass = "bg-blue-500/60";
+          if (r === 7 && c === 6) bgClass = "bg-red-500/60";
+          if (r === 7 && c === 8) bgClass = "bg-yellow-500/60";
+      }
+  }
+
+  return (
+    <div className={cn(cellClass, bgClass)}>
+      {content}
+    </div>
+  );
+});
+
+LudoCell.displayName = 'LudoCell';
 
 export default LudoGame;
