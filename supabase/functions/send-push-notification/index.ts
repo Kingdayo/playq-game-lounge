@@ -23,10 +23,16 @@ serve(async (req) => {
       );
     }
 
-    // Prioritize environment variables, fallback to hardcoded if necessary for immediate testing
-    // Note: In production, these should be set as Supabase secrets
+    // Note: VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be set in Supabase secrets
     const publicKey = Deno.env.get("VAPID_PUBLIC_KEY") || "BK05wU7meph8D_xwlcxbAgHGacOaS17kvHZJkpAgp2IDh0UNYfvHJf1VXlXy7FN53nniJrrDpH0c0I-9A3w7NdY";
-    const privateKey = Deno.env.get("VAPID_PRIVATE_KEY") || "umrBw5g7Pja5CmYjZeBGMkB--ZF8wvdAXRI_X0EtrRE";
+    const privateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+
+    if (!privateKey) {
+      return new Response(
+        JSON.stringify({ error: "VAPID_PRIVATE_KEY secret is not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     webpush.setVapidDetails(
       "mailto:playq@example.com",
