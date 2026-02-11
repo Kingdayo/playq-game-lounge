@@ -5,6 +5,7 @@ import { useSound } from './SoundContext';
 import { SoundName } from '@/types/game';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { sendPushToPlayers } from '@/hooks/usePushNotifications';
 
 interface DominoesContextType {
   gameState: DominoGameState | null;
@@ -263,8 +264,19 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
       broadcastSound('win');
     } else {
       broadcastSound('card');
+
+      // Notify next player via push if turn changed
+      if (newState.currentPlayerIndex !== playerIndex && newState.status === 'playing') {
+        const nextPlayer = newState.players[newState.currentPlayerIndex];
+        sendPushToPlayers([nextPlayer.id], {
+          title: '🁣 Your Turn!',
+          body: `It's your turn in Dominoes! ${currentPlayer.name} played a tile.`,
+          tag: 'dominoes-turn',
+          data: { type: 'turn', gameType: 'dominoes', lobbyCode }
+        });
+      }
     }
-  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
+  }, [gameState, currentPlayer, saveGameState, broadcastSound, lobbyCode]);
 
   const drawTile = useCallback(() => {
     if (!gameState || !currentPlayer) return;
@@ -303,7 +315,18 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
 
     saveGameState(newState);
     broadcastSound('card');
-  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
+
+    // Notify next player via push if turn changed (e.g. if they had to draw and turn passed)
+    if (newState.currentPlayerIndex !== playerIndex && newState.status === 'playing') {
+      const nextPlayer = newState.players[newState.currentPlayerIndex];
+      sendPushToPlayers([nextPlayer.id], {
+        title: '🁣 Your Turn!',
+        body: `It's your turn in Dominoes! ${currentPlayer.name} drew a tile.`,
+        tag: 'dominoes-turn',
+        data: { type: 'turn', gameType: 'dominoes', lobbyCode }
+      });
+    }
+  }, [gameState, currentPlayer, saveGameState, broadcastSound, lobbyCode]);
 
   const passTurn = useCallback(() => {
     if (!gameState || !currentPlayer) return;
@@ -340,7 +363,18 @@ export const DominoesProvider: React.FC<{ children: ReactNode }> = ({ children }
 
     saveGameState(newState);
     broadcastSound('move');
-  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
+
+    // Notify next player via push
+    if (newState.currentPlayerIndex !== playerIndex && newState.status === 'playing') {
+      const nextPlayer = newState.players[newState.currentPlayerIndex];
+      sendPushToPlayers([nextPlayer.id], {
+        title: '🁣 Your Turn!',
+        body: `It's your turn in Dominoes! ${currentPlayer.name} passed.`,
+        tag: 'dominoes-turn',
+        data: { type: 'turn', gameType: 'dominoes', lobbyCode }
+      });
+    }
+  }, [gameState, currentPlayer, saveGameState, broadcastSound, lobbyCode]);
 
   const resetGame = useCallback(async () => {
     setGameState(null);

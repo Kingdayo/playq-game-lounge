@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useLobbySync } from '@/hooks/useLobbySync';
 import { useSound } from './SoundContext';
 import { Player, GameSettings, Lobby } from '@/types/game';
+import { sendPushToPlayers } from '@/hooks/usePushNotifications';
 
 interface GameContextType {
   currentPlayer: Player | null;
@@ -342,6 +343,22 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     if (error) {
       console.error('Error starting game:', error);
       throw new Error('Failed to start game');
+    }
+
+    // Notify all participants except the host
+    if (currentLobby.players.length > 1) {
+      const otherPlayerIds = currentLobby.players
+        .filter(p => p.id !== currentPlayer.id)
+        .map(p => p.id);
+
+      if (otherPlayerIds.length > 0) {
+        sendPushToPlayers(otherPlayerIds, {
+          title: '🚀 Game Starting!',
+          body: `The ${currentLobby.gameType} game is starting! Get ready!`,
+          tag: 'game-start',
+          data: { type: 'gameStart', lobbyCode: currentLobby.code, gameType: currentLobby.gameType }
+        });
+      }
     }
   }, [currentLobby, currentPlayer]);
 

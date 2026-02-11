@@ -5,6 +5,7 @@ import { useSound } from './SoundContext';
 import { SoundName } from '@/types/game';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { sendPushToPlayers } from '@/hooks/usePushNotifications';
 
 interface UnoContextType {
   gameState: UnoGameState | null;
@@ -290,7 +291,20 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     saveGameState(newState);
-  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
+
+    // Notify next player via push if turn changed
+    if (newState.currentPlayerIndex !== playerIndex && newState.status === 'playing') {
+      const nextPlayer = newState.players[newState.currentPlayerIndex];
+      if (nextPlayer.id !== currentPlayer.id) {
+        sendPushToPlayers([nextPlayer.id], {
+          title: '🃏 Your Turn!',
+          body: `It's your turn in Uno! ${currentPlayer.name} played a card.`,
+          tag: 'uno-turn',
+          data: { type: 'turn', gameType: 'uno', lobbyCode }
+        });
+      }
+    }
+  }, [gameState, currentPlayer, saveGameState, broadcastSound, lobbyCode]);
 
   const selectWildColor = useCallback((color: UnoColor) => {
     if (!gameState || !currentPlayer) return;
@@ -321,7 +335,20 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     saveGameState(newState);
     broadcastSound('move');
-  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
+
+    // Notify next player via push if turn changed
+    if (newState.currentPlayerIndex !== playerIndex && newState.status === 'playing') {
+      const nextPlayer = newState.players[newState.currentPlayerIndex];
+      if (nextPlayer.id !== currentPlayer.id) {
+        sendPushToPlayers([nextPlayer.id], {
+          title: '🃏 Your Turn!',
+          body: `It's your turn in Uno! ${currentPlayer.name} chose ${color}.`,
+          tag: 'uno-turn',
+          data: { type: 'turn', gameType: 'uno', lobbyCode }
+        });
+      }
+    }
+  }, [gameState, currentPlayer, saveGameState, broadcastSound, lobbyCode]);
 
   const drawCard = useCallback(() => {
     if (!gameState || !currentPlayer) return;
@@ -351,7 +378,20 @@ export const UnoProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     saveGameState(newState);
     broadcastSound('card');
-  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
+
+    // Notify next player via push if turn changed
+    if (newState.currentPlayerIndex !== playerIndex && newState.status === 'playing') {
+      const nextPlayer = newState.players[newState.currentPlayerIndex];
+      if (nextPlayer.id !== currentPlayer.id) {
+        sendPushToPlayers([nextPlayer.id], {
+          title: '🃏 Your Turn!',
+          body: `It's your turn in Uno! ${currentPlayer.name} drew a card.`,
+          tag: 'uno-turn',
+          data: { type: 'turn', gameType: 'uno', lobbyCode }
+        });
+      }
+    }
+  }, [gameState, currentPlayer, saveGameState, broadcastSound, lobbyCode]);
 
   const callUno = useCallback(() => {
     if (!gameState || !currentPlayer) return;

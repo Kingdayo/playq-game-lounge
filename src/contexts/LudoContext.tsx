@@ -5,6 +5,7 @@ import { useSound } from './SoundContext';
 import { SoundName } from '@/types/game';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { sendPushToPlayers } from '@/hooks/usePushNotifications';
 
 interface LudoContextType {
   gameState: LudoGameState | null;
@@ -209,6 +210,17 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setTimeout(() => {
                 const stateAfterSkip = skipTurn(gameStateRef.current!);
                 saveGameState(stateAfterSkip);
+
+                // Notify next player via push
+                if (stateAfterSkip.currentPlayerIndex !== playerIndex && stateAfterSkip.status === 'playing') {
+                  const nextPlayer = stateAfterSkip.players[stateAfterSkip.currentPlayerIndex];
+                  sendPushToPlayers([nextPlayer.id], {
+                    title: '🎲 Your Turn!',
+                    body: `It's your turn in Ludo! ${currentPlayer.name} had no legal moves.`,
+                    tag: 'ludo-turn',
+                    data: { type: 'turn', gameType: 'ludo', lobbyCode }
+                  });
+                }
             }, 2000);
         } else {
             stateAfterRoll.lastActionMessage = `${currentPlayer.name} rolled a ${diceValue}.`;
@@ -238,8 +250,19 @@ export const LudoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         broadcastSound('win');
     } else {
         broadcastSound('move');
+
+        // Notify next player via push if turn changed
+        if (newState.currentPlayerIndex !== playerIndex && newState.status === 'playing') {
+          const nextPlayer = newState.players[newState.currentPlayerIndex];
+          sendPushToPlayers([nextPlayer.id], {
+            title: '🎲 Your Turn!',
+            body: `It's your turn in Ludo! ${currentPlayer.name} moved a token.`,
+            tag: 'ludo-turn',
+            data: { type: 'turn', gameType: 'ludo', lobbyCode }
+          });
+        }
     }
-  }, [gameState, currentPlayer, saveGameState, broadcastSound]);
+  }, [gameState, currentPlayer, saveGameState, broadcastSound, lobbyCode]);
 
   const resetGame = useCallback(() => {
     if (storageKey) {

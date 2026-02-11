@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useGame } from '@/contexts/GameContext';
 import { useNotifications } from '@/hooks/useNotifications';
+import { sendPushToPlayers } from '@/hooks/usePushNotifications';
 
 interface LobbyMessage {
   id: string;
@@ -157,6 +158,23 @@ export function useLobbyChat(lobbyCode: string | undefined) {
       content: content.trim(),
       is_system: false,
     });
+
+    // Send background push to other participants in this room
+    const { data: participants } = await supabase
+      .from('chat_participants')
+      .select('player_id')
+      .eq('room_id', roomId)
+      .neq('player_id', currentPlayer.id);
+
+    if (participants && participants.length > 0) {
+      const otherPlayerIds = participants.map(p => p.player_id);
+      sendPushToPlayers(otherPlayerIds, {
+        title: `💬 Lobby: ${currentPlayer.name}`,
+        body: content.trim().length > 100 ? content.trim().substring(0, 100) + '…' : content.trim(),
+        tag: `chat-${roomId}`,
+        data: { type: 'chat', roomId },
+      });
+    }
   }, [currentPlayer, roomId]);
 
   return { messages, sendMessage, roomId };

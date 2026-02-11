@@ -15,10 +15,11 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 export function usePushNotifications(playerId: string | undefined) {
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [vapidPublicKey, setVapidPublicKey] = useState<string | null>(null);
+  // Default to provided public key
+  const [vapidPublicKey, setVapidPublicKey] = useState<string | null>("pk_test_BdueEZF6Ij64tmw-7xM5k1wtfKbNqdaVw4326okRQZ0");
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
-  // Get VAPID public key on mount
+  // Get VAPID public key on mount (optional since we have a default, but good for sync)
   useEffect(() => {
     const fetchVapidKey = async () => {
       try {
@@ -27,7 +28,7 @@ export function usePushNotifications(playerId: string | undefined) {
           setVapidPublicKey(data.publicKey);
         }
       } catch (e) {
-        console.warn('Failed to fetch VAPID key:', e);
+        console.warn('Failed to fetch VAPID key from function:', e);
       }
     };
     fetchVapidKey();
