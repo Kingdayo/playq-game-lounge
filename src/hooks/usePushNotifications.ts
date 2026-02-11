@@ -55,6 +55,12 @@ export function usePushNotifications(playerId: string | undefined) {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') return false;
 
+      // Check for existing subscription and unsubscribe if it might have a different key
+      const existingSub = await registration.pushManager.getSubscription();
+      if (existingSub) {
+        await existingSub.unsubscribe();
+      }
+
       // Subscribe to push
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
