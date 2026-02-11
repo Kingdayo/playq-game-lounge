@@ -13,7 +13,7 @@ serve(async (req) => {
 
   try {
     // Check if keys already exist in environment
-    const existingPublic = Deno.env.get("VAPID_PUBLIC_KEY") || "pk_test_BdueEZF6Ij64tmw-7xM5k1wtfKbNqdaVw4326okRQZ0";
+    const existingPublic = Deno.env.get("VAPID_PUBLIC_KEY") || "BK05wU7meph8D_xwlcxbAgHGacOaS17kvHZJkpAgp2IDh0UNYfvHJf1VXlXy7FN53nniJrrDpH0c0I-9A3w7NdY";
 
     if (existingPublic) {
       return new Response(
