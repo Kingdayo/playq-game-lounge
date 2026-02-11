@@ -13,17 +13,16 @@ serve(async (req) => {
 
   try {
     // Check if keys already exist in environment
-    const existingPublic = Deno.env.get("VAPID_PUBLIC_KEY");
-    const existingPrivate = Deno.env.get("VAPID_PRIVATE_KEY");
+    const existingPublic = Deno.env.get("VAPID_PUBLIC_KEY") || "pk_test_BdueEZF6Ij64tmw-7xM5k1wtfKbNqdaVw4326okRQZ0";
 
-    if (existingPublic && existingPrivate) {
+    if (existingPublic) {
       return new Response(
         JSON.stringify({ publicKey: existingPublic }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Generate new keys (returned to client for initial setup)
+    // Generate new keys (only if no environment variables AND no fallback set)
     const keys = await generateVapidKeys();
     const serialized = await serializeVapidKeys(keys);
 

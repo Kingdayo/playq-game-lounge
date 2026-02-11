@@ -64,6 +64,8 @@ self.addEventListener('notificationclick', (event) => {
     url = `/lobby/${data.lobbyCode}`;
   } else if (data.type === 'turn' && data.gameType && data.lobbyCode) {
     url = `/game/${data.gameType}/${data.lobbyCode}`;
+  } else if (data.type === 'gameStart' && data.gameType && data.lobbyCode) {
+    url = `/game/${data.gameType}/${data.lobbyCode}`;
   } else if (data.type === 'gameStart' && data.lobbyCode) {
     url = `/lobby/${data.lobbyCode}`;
   }
