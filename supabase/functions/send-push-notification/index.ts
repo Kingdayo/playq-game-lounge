@@ -19,7 +19,8 @@ serve(async (req) => {
   }
 
   try {
-    const { player_ids, title, body, icon, tag, data } = await req.json();
+    const requestData = await req.json();
+    const { player_ids, title, body, icon, tag, data, renotify } = requestData;
 
     if (!player_ids || !Array.isArray(player_ids) || player_ids.length === 0) {
       return new Response(
@@ -76,6 +77,7 @@ serve(async (req) => {
       icon: icon || "/pwa-192x192.png",
       badge: "/pwa-192x192.png",
       tag: tag || undefined,
+      renotify: renotify || false,
       data: data || {},
     });
 
@@ -117,7 +119,7 @@ serve(async (req) => {
       JSON.stringify({ sent, failed, cleaned: expiredEndpoints.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Send push error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),

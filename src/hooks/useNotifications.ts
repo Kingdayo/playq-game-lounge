@@ -63,16 +63,10 @@ export function useNotifications() {
     }
   }, []);
 
-  const sendNotification = useCallback(({ title, body, icon, tag, requireInteraction, data }: NotificationOptions) => {
-    if (!enabled) return;
-    if (permission !== 'granted') return;
+  const fallbackNotification = useCallback(({ title, body, icon, tag, requireInteraction, data }: NotificationOptions) => {
     if (!('Notification' in window)) return;
 
-    // Don't notify if the page is focused
-    if (document.visibilityState === 'visible' && document.hasFocus()) return;
-
     try {
-      // In some mobile browsers, 'new Notification' might be available but throws when called
       const notification = new Notification(title, {
         body,
         icon: icon || '/pwa-192x192.png',
@@ -87,14 +81,40 @@ export function useNotifications() {
         notification.close();
       };
 
-      // Auto-close after 5 seconds
       setTimeout(() => notification.close(), 5000);
     } catch (e) {
-      console.warn('Notification creation failed:', e);
-      // Fallback for mobile: we could use a toast here if we wanted,
-      // but usually local notifications don't work when app is in background on mobile anyway.
+      console.warn('Fallback notification creation failed:', e);
     }
-  }, [enabled, permission]);
+  }, []);
+
+  const sendNotification = useCallback(({ title, body, icon, tag, requireInteraction, data }: NotificationOptions) => {
+    if (!enabled) return;
+    if (permission !== 'granted') return;
+
+    // We prefer using the service worker to show notifications as it's more reliable on mobile
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then((registration) => {
+        try {
+          registration.showNotification(title, {
+            body,
+            icon: icon || '/pwa-192x192.png',
+            badge: '/pwa-192x192.png',
+            tag: tag || 'playq-local-notification',
+            requireInteraction: requireInteraction || false,
+            renotify: true,
+            data,
+          });
+        } catch (e) {
+          console.warn('Service worker notification failed, falling back to Notification API:', e);
+          fallbackNotification({ title, body, icon, tag, requireInteraction, data });
+        }
+      }).catch(() => {
+        fallbackNotification({ title, body, icon, tag, requireInteraction, data });
+      });
+    } else {
+      fallbackNotification({ title, body, icon, tag, requireInteraction, data });
+    }
+  }, [enabled, permission, fallbackNotification]);
 
   // Specific notification helpers
   const notifyChatMessage = useCallback((senderName: string, message: string, roomId?: string) => {

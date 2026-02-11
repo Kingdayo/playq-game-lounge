@@ -145,7 +145,12 @@ export async function sendPushToPlayers(
     await supabase.functions.invoke('send-push-notification', {
       body: {
         player_ids: playerIds,
-        ...notification,
+        title: notification.title,
+        body: notification.body,
+        icon: notification.icon,
+        tag: notification.tag || 'playq-notification',
+        renotify: true,
+        data: notification.data || {},
       },
     });
   } catch (e) {
