@@ -172,7 +172,7 @@ export function useLobbyChat(lobbyCode: string | undefined) {
         title: `💬 Lobby: ${currentPlayer.name}`,
         body: content.trim().length > 100 ? content.trim().substring(0, 100) + '…' : content.trim(),
         tag: `chat-${roomId}`,
-        data: { type: 'chat', roomId },
+        data: { type: 'chat', roomId, lobbyCode },
       });
     }
   }, [currentPlayer, roomId]);

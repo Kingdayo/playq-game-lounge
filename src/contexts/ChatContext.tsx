@@ -271,6 +271,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       { room_id: room.id, player_id: targetPlayerId },
     ]);
 
+    // Send background push to the target player
+    sendPushToPlayers([targetPlayerId], {
+      title: '💬 New Message',
+      body: `${currentPlayer.name} started a conversation with you`,
+      tag: `chat-${room.id}`,
+      data: { type: 'chat', roomId: room.id },
+    });
+
     await loadRooms();
     return room.id;
   }, [currentPlayer, loadRooms]);
@@ -291,7 +299,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error || !room) throw new Error('Failed to create group');
 
     // Add all members including the creator
-    const allMembers = [currentPlayer.id, ...memberIds.filter(id => id !== currentPlayer.id)];
+    const otherMembers = memberIds.filter(id => id !== currentPlayer.id);
+    const allMembers = [currentPlayer.id, ...otherMembers];
     await supabase.from('chat_participants').insert(
       allMembers.map(playerId => ({ room_id: room.id, player_id: playerId }))
     );
@@ -305,6 +314,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       content: `${currentPlayer.name} created the group "${name}"`,
       is_system: true,
     });
+
+    // Send background push to all other members
+    if (otherMembers.length > 0) {
+      sendPushToPlayers(otherMembers, {
+        title: '👥 New Group Chat',
+        body: `${currentPlayer.name} added you to the group "${name}"`,
+        tag: `chat-${room.id}`,
+        data: { type: 'chat', roomId: room.id },
+      });
+    }
 
     await loadRooms();
     return room.id;
