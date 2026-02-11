@@ -59,7 +59,11 @@ self.addEventListener('notificationclick', (event) => {
   let url = '/';
 
   if (data.type === 'chat' && data.roomId) {
-    url = '/chat';
+    if (data.lobbyCode) {
+      url = `/lobby/${data.lobbyCode}`;
+    } else {
+      url = `/chat?roomId=${data.roomId}`;
+    }
   } else if (data.type === 'invite' && data.lobbyCode) {
     url = `/lobby/${data.lobbyCode}`;
   } else if (data.type === 'turn' && data.gameType && data.lobbyCode) {

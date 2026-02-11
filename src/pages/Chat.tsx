@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import { Send, Users, Search, Plus, ChevronLeft, MessageSquare, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,8 @@ const Chat: React.FC = () => {
     deleteRoom,
   } = useChat();
 
+  const [searchParams] = useSearchParams();
+  const roomIdFromUrl = searchParams.get('roomId');
   const [inputValue, setInputValue] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
@@ -57,6 +60,17 @@ const Chat: React.FC = () => {
       markAsRead(activeRoomId);
     }
   }, [activeRoomId, markAsRead, currentRoomMessages.length]);
+
+  // Handle roomId from URL
+  useEffect(() => {
+    if (roomIdFromUrl && rooms.length > 0) {
+      const roomExists = rooms.some(r => r.id === roomIdFromUrl);
+      if (roomExists && activeRoomId !== roomIdFromUrl) {
+        setActiveRoomId(roomIdFromUrl);
+        setIsMobileChatOpen(true);
+      }
+    }
+  }, [roomIdFromUrl, rooms, activeRoomId, setActiveRoomId]);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || !currentPlayer || !activeRoomId) return;
