@@ -14,7 +14,13 @@ interface NotificationOptions {
 export function useNotifications() {
   const [permission, setPermission] = useState<NotificationPermissionState>(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
-    return Notification.permission as NotificationPermissionState;
+    // Check if the Notification API is available and permission is accessible
+    try {
+      return (Notification.permission || 'default') as NotificationPermissionState;
+    } catch (e) {
+      console.warn('Notification API permission check failed:', e);
+      return 'unsupported';
+    }
   });
 
   const [enabled, setEnabledState] = useState<boolean>(() => {
@@ -31,26 +37,27 @@ export function useNotifications() {
   }, []);
 
   const requestPermission = useCallback(async (): Promise<NotificationPermissionState> => {
-    if (!('Notification' in window)) {
+    if (!('Notification' in window) || !Notification.requestPermission) {
       setPermission('unsupported');
       return 'unsupported';
     }
 
-    if (Notification.permission === 'granted') {
-      setPermission('granted');
-      return 'granted';
-    }
-
-    if (Notification.permission === 'denied') {
-      setPermission('denied');
-      return 'denied';
-    }
-
     try {
+      if (Notification.permission === 'granted') {
+        setPermission('granted');
+        return 'granted';
+      }
+
+      if (Notification.permission === 'denied') {
+        setPermission('denied');
+        return 'denied';
+      }
+
       const result = await Notification.requestPermission();
       setPermission(result as NotificationPermissionState);
       return result as NotificationPermissionState;
-    } catch {
+    } catch (e) {
+      console.warn('Failed to request notification permission:', e);
       setPermission('default');
       return 'default';
     }
@@ -59,10 +66,13 @@ export function useNotifications() {
   const sendNotification = useCallback(({ title, body, icon, tag, requireInteraction, data }: NotificationOptions) => {
     if (!enabled) return;
     if (permission !== 'granted') return;
+    if (!('Notification' in window)) return;
+
     // Don't notify if the page is focused
     if (document.visibilityState === 'visible' && document.hasFocus()) return;
 
     try {
+      // In some mobile browsers, 'new Notification' might be available but throws when called
       const notification = new Notification(title, {
         body,
         icon: icon || '/pwa-192x192.png',
@@ -80,7 +90,9 @@ export function useNotifications() {
       // Auto-close after 5 seconds
       setTimeout(() => notification.close(), 5000);
     } catch (e) {
-      console.warn('Notification failed:', e);
+      console.warn('Notification creation failed:', e);
+      // Fallback for mobile: we could use a toast here if we wanted,
+      // but usually local notifications don't work when app is in background on mobile anyway.
     }
   }, [enabled, permission]);
 

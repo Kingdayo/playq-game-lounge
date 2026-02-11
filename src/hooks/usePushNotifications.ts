@@ -41,24 +41,38 @@ export function usePushNotifications(playerId: string | undefined) {
     navigator.serviceWorker.ready.then((reg) => {
       setRegistration(reg);
       // Check if already subscribed
-      reg.pushManager.getSubscription().then((sub) => {
-        setIsSubscribed(!!sub);
-      });
+      if (reg.pushManager) {
+        reg.pushManager.getSubscription().then((sub) => {
+          setIsSubscribed(!!sub);
+        }).catch(err => {
+          console.warn('Failed to get push subscription:', err);
+        });
+      }
     });
   }, []);
 
   const subscribe = useCallback(async () => {
     if (!registration || !vapidPublicKey || !playerId) return false;
+    if (!registration.pushManager) {
+      console.warn('PushManager not supported on this browser');
+      return false;
+    }
 
     try {
       // Request notification permission if needed
+      if (!('Notification' in window)) return false;
+
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') return false;
 
       // Check for existing subscription and unsubscribe if it might have a different key
       const existingSub = await registration.pushManager.getSubscription();
       if (existingSub) {
-        await existingSub.unsubscribe();
+        try {
+          await existingSub.unsubscribe();
+        } catch (e) {
+          console.warn('Failed to unsubscribe from existing push:', e);
+        }
       }
 
       // Subscribe to push
