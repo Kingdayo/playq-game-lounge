@@ -1,15 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
-import { sendNotification, deserializeVapidKeys } from "npm:web-push-browser@1.4.2";
+import webpush from "npm:web-push";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
@@ -27,7 +28,11 @@ serve(async (req) => {
     const publicKey = Deno.env.get("VAPID_PUBLIC_KEY") || "BK05wU7meph8D_xwlcxbAgHGacOaS17kvHZJkpAgp2IDh0UNYfvHJf1VXlXy7FN53nniJrrDpH0c0I-9A3w7NdY";
     const privateKey = Deno.env.get("VAPID_PRIVATE_KEY") || "umrBw5g7Pja5CmYjZeBGMkB--ZF8wvdAXRI_X0EtrRE";
 
-    const vapidKeys = await deserializeVapidKeys({ publicKey, privateKey });
+    webpush.setVapidDetails(
+      "mailto:playq@example.com",
+      publicKey,
+      privateKey
+    );
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -76,10 +81,7 @@ serve(async (req) => {
           },
         };
 
-        await sendNotification(pushSubscription, vapidKeys, {
-          subject: "mailto:playq@example.com",
-        }, new TextEncoder().encode(payload));
-
+        await webpush.sendNotification(pushSubscription, payload);
         sent++;
       } catch (err: any) {
         failed++;
