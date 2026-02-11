@@ -13,6 +13,7 @@ import { useSound } from './SoundContext';
 import { SoundName } from '@/types/game';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { sendPushToPlayers } from '@/hooks/usePushNotifications';
 
 interface PictionaryContextType {
   gameState: PictionaryGameState | null;
@@ -214,7 +215,18 @@ export const PictionaryProvider: React.FC<{ children: ReactNode }> = ({ children
 
     saveGameState(newState);
     broadcastSound('move');
-  }, [currentPlayer, saveGameState, broadcastSound]);
+
+    // Notify the drawer via push
+    const currentDrawer = newState.players[newState.currentDrawerIndex];
+    if (currentDrawer.id !== currentPlayer?.id) {
+      sendPushToPlayers([currentDrawer.id], {
+        title: '🎨 Your Turn to Draw!',
+        body: `It's your turn to draw in Pictionary!`,
+        tag: 'pictionary-turn',
+        data: { type: 'turn', gameType: 'pictionary', lobbyCode }
+      });
+    }
+  }, [currentPlayer, saveGameState, broadcastSound, lobbyCode]);
 
   const startGame = useCallback(() => {
     if (!currentLobby || !currentPlayer?.isHost) return;

@@ -15,8 +15,8 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 export function usePushNotifications(playerId: string | undefined) {
   const [isSubscribed, setIsSubscribed] = useState(false);
-  // Default to provided public key
-  const [vapidPublicKey, setVapidPublicKey] = useState<string | null>("pk_test_BdueEZF6Ij64tmw-7xM5k1wtfKbNqdaVw4326okRQZ0");
+  // Default to generated valid VAPID public key
+  const [vapidPublicKey, setVapidPublicKey] = useState<string | null>("BK05wU7meph8D_xwlcxbAgHGacOaS17kvHZJkpAgp2IDh0UNYfvHJf1VXlXy7FN53nniJrrDpH0c0I-9A3w7NdY");
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   // Get VAPID public key on mount (optional since we have a default, but good for sync)
