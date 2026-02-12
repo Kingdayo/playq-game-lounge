@@ -54,8 +54,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentRoomMessages, setCurrentRoomMessages] = useState<ChatMessage[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [readRooms, setReadRooms] = useState<Set<string>>(new Set());
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem('playq_chat_unread_counts');
+    return saved ? JSON.parse(saved) : {};
+  });
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Persist unread counts
+  useEffect(() => {
+    localStorage.setItem('playq_chat_unread_counts', JSON.stringify(unreadCounts));
+  }, [unreadCounts]);
 
   // Ensure profile exists for current player
   useEffect(() => {
@@ -160,7 +168,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         created_by: room.created_by,
         lastMessage: lastMsg?.content,
         lastMessageTime: lastMsg?.created_at,
-        unreadCount: 0, // Will be managed client-side
+        unreadCount: unreadCounts[room.id] || 0,
         memberCount: participants.length,
         otherParticipantName: profile?.name,
         otherParticipantAvatar: profile?.avatar,
@@ -343,7 +351,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [currentPlayer]);
 
   const markAsRead = useCallback((roomId: string) => {
-    setReadRooms(prev => new Set(prev).add(roomId));
+    setUnreadCounts(prev => ({ ...prev, [roomId]: 0 }));
     setRooms(prev => prev.map(r => r.id === roomId ? { ...r, unreadCount: 0 } : r));
   }, []);
 
@@ -370,8 +378,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [activeRoomId, currentPlayer]);
 
   const getUnreadTotal = useCallback(() => {
-    return rooms.reduce((acc, room) => acc + room.unreadCount, 0);
-  }, [rooms]);
+    return rooms.reduce((acc, room) => {
+      // Don't include lobby chats in the global navbar total
+      if (room.type === 'lobby') return acc;
+      return acc + (unreadCounts[room.id] || 0);
+    }, 0);
+  }, [rooms, unreadCounts]);
 
   // Load rooms on mount and when player changes
   useEffect(() => {
@@ -411,6 +423,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         (payload) => {
           const newMsg = payload.new as ChatMessage;
 
+          // If we don't have this room yet, reload rooms
+          if (!rooms.some(r => r.id === newMsg.room_id)) {
+            loadRooms();
+          }
+
           // If this message is in the active room, append it
           if (newMsg.room_id === activeRoomId) {
             setCurrentRoomMessages(prev => {
@@ -422,10 +439,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Increment unread count for the room and send notification
             if (newMsg.sender_id !== currentPlayer.id) {
               notifyChatMessage(newMsg.sender_name, newMsg.content, newMsg.room_id);
+              setUnreadCounts(prev => ({
+                ...prev,
+                [newMsg.room_id]: (prev[newMsg.room_id] || 0) + 1
+              }));
             }
             setRooms(prev => prev.map(r => {
               if (r.id === newMsg.room_id && newMsg.sender_id !== currentPlayer.id) {
-                return { ...r, unreadCount: r.unreadCount + 1 };
+                return { ...r, unreadCount: (r.unreadCount || 0) + 1 };
               }
               return r;
             }));
