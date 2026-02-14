@@ -13,6 +13,11 @@ import {
   Bell,
   BellOff,
   BellRing,
+  Bug,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  ShieldCheck,
 } from 'lucide-react';
 import { GamingButton } from '@/components/GamingButton';
 import { Button } from '@/components/ui/button';
@@ -53,7 +58,14 @@ const Settings: React.FC = () => {
   } = useTheme();
   const { soundEnabled, soundVolume, setSoundEnabled, setSoundVolume } = useSound();
   const { currentPlayer, setCurrentPlayer } = useGame();
-  const { permission, enabled: notificationsEnabled, setEnabled: setNotificationsEnabled, requestPermission } = useNotificationContext();
+  const {
+    permission,
+    enabled: notificationsEnabled,
+    setEnabled: setNotificationsEnabled,
+    requestPermission,
+    pushDebug,
+    isPushSubscribed
+  } = useNotificationContext();
   
   const [username, setUsername] = useState(currentPlayer?.name || '');
   const [selectedAvatar, setSelectedAvatar] = useState(currentPlayer?.avatar || '🎮');
@@ -386,10 +398,90 @@ const Settings: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Reset Button */}
+        {/* Push Diagnostics Section */}
         <motion.div
           variants={sectionVariants}
           transition={{ delay: 0.5 }}
+          className="glass-card rounded-2xl p-6"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-xl bg-primary/10">
+              <Bug className="w-5 h-5 text-primary" />
+            </div>
+            <h2 className="font-display text-xl font-bold">Push Diagnostics</h2>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-3 rounded-xl bg-muted/50 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Service Worker</span>
+                  {pushDebug.swStatus === 'active' ? (
+                    <CheckCircle2 className="w-4 h-4 text-success" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-destructive" />
+                  )}
+                </div>
+                <p className="font-medium capitalize">{pushDebug.swStatus}</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-muted/50 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Push Support</span>
+                  {pushDebug.pushSupported ? (
+                    <CheckCircle2 className="w-4 h-4 text-success" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-destructive" />
+                  )}
+                </div>
+                <p className="font-medium">{pushDebug.pushSupported ? 'Available' : 'Unavailable'}</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-muted/50 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Subscription</span>
+                  {isPushSubscribed ? (
+                    <ShieldCheck className="w-4 h-4 text-success" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-warning" />
+                  )}
+                </div>
+                <p className="font-medium capitalize">{pushDebug.subscriptionStatus.replace('-', ' ')}</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-muted/50 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Permission</span>
+                  {permission === 'granted' ? (
+                    <CheckCircle2 className="w-4 h-4 text-success" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-destructive" />
+                  )}
+                </div>
+                <p className="font-medium capitalize">{permission}</p>
+              </div>
+            </div>
+
+            {pushDebug.lastError && (
+              <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 space-y-1">
+                <div className="flex items-center gap-2 text-destructive">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Last Error</span>
+                </div>
+                <p className="text-sm font-mono break-all">{pushDebug.lastError}</p>
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              These diagnostics help identify why notifications might not be working on your device.
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Reset Button */}
+        <motion.div
+          variants={sectionVariants}
+          transition={{ delay: 0.6 }}
           className="flex justify-center"
         >
           <Button

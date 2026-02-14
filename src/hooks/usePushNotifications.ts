@@ -15,20 +15,36 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 export function usePushNotifications(playerId: string | undefined) {
   const [isSubscribed, setIsSubscribed] = useState(false);
-  // Default to generated valid VAPID public key
-  const [vapidPublicKey, setVapidPublicKey] = useState<string | null>("BK05wU7meph8D_xwlcxbAgHGacOaS17kvHZJkpAgp2IDh0UNYfvHJf1VXlXy7FN53nniJrrDpH0c0I-9A3w7NdY");
+  const [vapidPublicKey, setVapidPublicKey] = useState<string | null>(null);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const [debugInfo, setDebugInfo] = useState<{
+    swStatus: string;
+    pushSupported: boolean;
+    subscriptionStatus: string;
+    lastError: string | null;
+  }>({
+    swStatus: 'checking',
+    pushSupported: false,
+    subscriptionStatus: 'checking',
+    lastError: null
+  });
 
-  // Get VAPID public key on mount (optional since we have a default, but good for sync)
+  // Get VAPID public key on mount
   useEffect(() => {
     const fetchVapidKey = async () => {
       try {
+        console.log('Fetching VAPID public key...');
         const { data, error } = await supabase.functions.invoke('generate-vapid-keys');
-        if (!error && data?.publicKey) {
+        if (error) throw error;
+        if (data?.publicKey) {
+          console.log('VAPID key fetched successfully');
           setVapidPublicKey(data.publicKey);
+        } else {
+          throw new Error('No public key returned from function');
         }
-      } catch (e) {
+      } catch (e: any) {
         console.warn('Failed to fetch VAPID key from function:', e);
+        setDebugInfo(prev => ({ ...prev, lastError: `VAPID fetch failed: ${e.message}` }));
       }
     };
     fetchVapidKey();
@@ -36,38 +52,81 @@ export function usePushNotifications(playerId: string | undefined) {
 
   // Get service worker registration
   useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
+    if (!('serviceWorker' in navigator)) {
+      setDebugInfo(prev => ({ ...prev, swStatus: 'unsupported', pushSupported: false }));
+      return;
+    }
 
+    console.log('Checking service worker registration...');
     navigator.serviceWorker.ready.then((reg) => {
+      console.log('Service worker ready');
       setRegistration(reg);
+      const pushSupported = 'pushManager' in reg;
+      setDebugInfo(prev => ({
+        ...prev,
+        swStatus: 'active',
+        pushSupported
+      }));
+
       // Check if already subscribed
-      if (reg.pushManager) {
+      if (pushSupported) {
         reg.pushManager.getSubscription().then((sub) => {
           setIsSubscribed(!!sub);
+          setDebugInfo(prev => ({
+            ...prev,
+            subscriptionStatus: !!sub ? 'subscribed' : 'not-subscribed'
+          }));
         }).catch(err => {
           console.warn('Failed to get push subscription:', err);
+          setDebugInfo(prev => ({ ...prev, lastError: `Get subscription error: ${err.message}` }));
         });
+      } else {
+        setDebugInfo(prev => ({ ...prev, subscriptionStatus: 'unsupported' }));
       }
+    }).catch(err => {
+      console.error('Service worker not ready:', err);
+      setDebugInfo(prev => ({ ...prev, swStatus: 'failed', lastError: `SW error: ${err.message}` }));
     });
   }, []);
 
   const subscribe = useCallback(async () => {
-    if (!registration || !vapidPublicKey || !playerId) return false;
+    if (!playerId) {
+      console.warn('Cannot subscribe: No player ID');
+      return false;
+    }
+    if (!registration) {
+      console.warn('Cannot subscribe: Service worker registration missing');
+      return false;
+    }
+    if (!vapidPublicKey) {
+      console.warn('Cannot subscribe: VAPID public key missing');
+      return false;
+    }
     if (!registration.pushManager) {
       console.warn('PushManager not supported on this browser');
+      setDebugInfo(prev => ({ ...prev, pushSupported: false }));
       return false;
     }
 
     try {
+      console.log('Starting push subscription process...');
+      setDebugInfo(prev => ({ ...prev, subscriptionStatus: 'subscribing', lastError: null }));
+
       // Request notification permission if needed
-      if (!('Notification' in window)) return false;
+      if (!('Notification' in window)) {
+        throw new Error('Notification API not supported');
+      }
 
       const permission = await Notification.requestPermission();
-      if (permission !== 'granted') return false;
+      console.log('Notification permission status:', permission);
+      if (permission !== 'granted') {
+        throw new Error(`Notification permission ${permission}`);
+      }
 
       // Check for existing subscription and unsubscribe if it might have a different key
       const existingSub = await registration.pushManager.getSubscription();
       if (existingSub) {
+        console.log('Found existing subscription, unsubscribing first...');
         try {
           await existingSub.unsubscribe();
         } catch (e) {
@@ -76,17 +135,21 @@ export function usePushNotifications(playerId: string | undefined) {
       }
 
       // Subscribe to push
+      console.log('Calling pushManager.subscribe...');
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
       });
 
+      console.log('Push subscription successful:', subscription.endpoint);
+
       const subJson = subscription.toJSON();
       if (!subJson.endpoint || !subJson.keys?.p256dh || !subJson.keys?.auth) {
-        throw new Error('Invalid subscription');
+        throw new Error('Invalid subscription object received from browser');
       }
 
       // Store subscription in database
+      console.log('Saving subscription to database...');
       const { error } = await supabase
         .from('push_subscriptions')
         .upsert(
@@ -100,14 +163,21 @@ export function usePushNotifications(playerId: string | undefined) {
         );
 
       if (error) {
-        console.error('Failed to save push subscription:', error);
-        return false;
+        console.error('Failed to save push subscription to DB:', error);
+        throw error;
       }
 
+      console.log('Subscription saved successfully');
       setIsSubscribed(true);
+      setDebugInfo(prev => ({ ...prev, subscriptionStatus: 'subscribed' }));
       return true;
-    } catch (e) {
+    } catch (e: any) {
       console.error('Push subscription failed:', e);
+      setDebugInfo(prev => ({
+        ...prev,
+        subscriptionStatus: 'failed',
+        lastError: e.message || String(e)
+      }));
       return false;
     }
   }, [registration, vapidPublicKey, playerId]);
@@ -133,7 +203,7 @@ export function usePushNotifications(playerId: string | undefined) {
     }
   }, [registration, playerId]);
 
-  return { isSubscribed, subscribe, unsubscribe, vapidPublicKey };
+  return { isSubscribed, subscribe, unsubscribe, vapidPublicKey, debugInfo };
 }
 
 // Helper to send push notification via edge function
