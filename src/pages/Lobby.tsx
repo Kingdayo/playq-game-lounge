@@ -26,6 +26,7 @@ import { useUno } from '@/contexts/UnoContext';
 import { useLudo } from '@/contexts/LudoContext';
 import { useDominoes } from '@/contexts/DominoesContext';
 import { usePictionary } from '@/contexts/PictionaryContext';
+import { useWhot } from '@/contexts/WhotContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
@@ -40,6 +41,7 @@ const Lobby: React.FC = () => {
   const { startGame: startLudoGame } = useLudo();
   const { startGame: startDominoesGame } = useDominoes();
   const { startGame: startPictionaryGame } = usePictionary();
+  const { startGame: startWhotGame } = useWhot();
   
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -135,6 +137,8 @@ const Lobby: React.FC = () => {
         startDominoesGame();
       } else if (currentLobby.gameType === 'pictionary') {
         startPictionaryGame();
+      } else if (currentLobby.gameType === 'whot') {
+        startWhotGame();
       }
       await startLobbyGame();
     } catch (error) {
@@ -156,6 +160,7 @@ const Lobby: React.FC = () => {
     pictionary: { name: 'Pictionary', color: 'from-purple-500 to-pink-500', minPlayers: 4 },
     ludo: { name: 'Ludo', color: 'from-cyan-500 to-blue-500', minPlayers: 2 },
     dominoes: { name: 'Dominoes', color: 'from-green-500 to-teal-500', minPlayers: 2 },
+    whot: { name: 'Whot', color: 'from-purple-500 to-indigo-500', minPlayers: 2 },
   };
 
   const currentGame = currentLobby ? gameInfo[currentLobby.gameType] : null;

@@ -63,6 +63,15 @@ const games = [
     gradient: 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)',
     glowColor: 'rgba(16, 185, 129, 0.3)',
   },
+  {
+    id: 'whot',
+    title: 'Whot',
+    description: 'The classic African card game! Match shapes and numbers to empty your hand.',
+    icon: Layers,
+    playerCount: '2-4 Players',
+    gradient: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+    glowColor: 'rgba(139, 92, 246, 0.3)',
+  },
 ];
 
 const Index: React.FC = () => {
@@ -74,7 +83,7 @@ const Index: React.FC = () => {
   const [joinError, setJoinError] = useState('');
 
   const handleCreateGame = async (gameId: string) => {
-    const lobby = await createLobby(gameId as 'uno' | 'ludo' | 'pictionary' | 'dominoes');
+    const lobby = await createLobby(gameId as 'uno' | 'ludo' | 'pictionary' | 'dominoes' | 'whot');
     navigate(`/lobby/${lobby.code}`);
   };
 
@@ -242,7 +251,7 @@ const Index: React.FC = () => {
               {
                 step: '01',
                 title: 'Choose a Game',
-                description: 'Pick from Uno, Pictionary, Ludo, or Dominoes',
+                description: 'Pick from Uno, Pictionary, Ludo, Dominoes, or Whot',
               },
               {
                 step: '02',

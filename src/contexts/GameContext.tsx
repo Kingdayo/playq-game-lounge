@@ -105,7 +105,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   React.useEffect(() => {
     const rehydrate = () => {
         const path = window.location.pathname;
-        const match = path.match(/\/(lobby|game\/uno|game\/ludo|game\/dominoes|game\/pictionary)\/([a-zA-Z0-9]+)/);
+        const match = path.match(/\/(lobby|game\/uno|game\/ludo|game\/dominoes|game\/pictionary|game\/whot)\/([a-zA-Z0-9]+)/);
         if (match) {
             const code = match[2].toUpperCase();
             if (code !== activeLobbyCode) {
@@ -137,6 +137,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       ludo: 4,
       pictionary: 8,
       dominoes: 4,
+      whot: 4,
     };
 
     const code = generateCode();
