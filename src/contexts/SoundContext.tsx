@@ -23,19 +23,20 @@ export const useSound = () => {
 
 const SOUNDS = {
   dice: 'https://assets.mixkit.co/active_storage/sfx/2561/2561-preview.mp3',
-  card: 'https://assets.mixkit.co/active_storage/sfx/1012/1012-preview.mp3',
+  card: 'https://assets.mixkit.co/active_storage/sfx/1018/1018-preview.mp3',
   move: 'https://assets.mixkit.co/active_storage/sfx/2011/2011-preview.mp3',
-  win: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
-  error: 'https://assets.mixkit.co/active_storage/sfx/2567/2567-preview.mp3',
-  success: 'https://assets.mixkit.co/active_storage/sfx/1103/1103-preview.mp3',
-  chat: 'https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3',
+  win: 'https://assets.mixkit.co/active_storage/sfx/1993/1993-preview.mp3',
+  error: 'https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3',
+  success: 'https://assets.mixkit.co/active_storage/sfx/1111/1111-preview.mp3',
+  chat: 'https://assets.mixkit.co/active_storage/sfx/2356/2356-preview.mp3',
 };
 
 const BGM_URLS = {
   uno: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
   ludo: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
-  dominoes: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+  dominoes: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3',
   pictionary: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+  whot: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3',
 };
 
 export const SoundProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
