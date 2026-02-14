@@ -18,7 +18,7 @@ serve(async (req) => {
 
   try {
     // Check if keys already exist in environment
-    const existingPublic = Deno.env.get("VAPID_PUBLIC_KEY") || "BK05wU7meph8D_xwlcxbAgHGacOaS17kvHZJkpAgp2IDh0UNYfvHJf1VXlXy7FN53nniJrrDpH0c0I-9A3w7NdY";
+    const existingPublic = Deno.env.get("VAPID_PUBLIC_KEY");
 
     if (existingPublic) {
       return new Response(
@@ -27,8 +27,9 @@ serve(async (req) => {
       );
     }
 
+    console.error("VAPID_PUBLIC_KEY is not configured in Supabase secrets");
     return new Response(
-      JSON.stringify({ error: "No keys available" }),
+      JSON.stringify({ error: "Push service public key not configured" }),
       { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

@@ -18,6 +18,12 @@ interface NotificationContextType {
   notifyGameOver: (winnerName: string, gameType: string) => void;
   notifyPlayerReady: (playerName: string) => void;
   isPushSubscribed: boolean;
+  pushDebug: {
+    swStatus: string;
+    pushSupported: boolean;
+    subscriptionStatus: string;
+    lastError: string | null;
+  };
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -25,7 +31,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const notifications = useNotifications();
   const { currentPlayer } = useGame();
-  const { isSubscribed, subscribe, vapidPublicKey } = usePushNotifications(currentPlayer?.id);
+  const { isSubscribed, subscribe, vapidPublicKey, debugInfo } = usePushNotifications(currentPlayer?.id);
 
   // Auto-subscribe to push when permission is granted
   useEffect(() => {
@@ -38,15 +44,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   useEffect(() => {
     const hasAsked = localStorage.getItem('playq-notification-asked');
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+    const isStandalone = (window.navigator as any).standalone === true || window.matchMedia('(display-mode: standalone)').matches;
 
     if (!hasAsked) {
       const timer = setTimeout(() => {
         // Special handling for iOS
         if (isIOS && !isStandalone) {
           toast('📱 Enable Mobile Notifications', {
-            description: 'To receive notifications on iOS, tap the Share button and select "Add to Home Screen".',
-            duration: 10000,
+            description: 'Push notifications on iOS require the app to be installed. Tap the Share button (square with arrow) and then "Add to Home Screen".',
+            duration: 15000,
           });
           localStorage.setItem('playq-notification-asked', 'true');
           return;
@@ -84,7 +90,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, [notifications.permission, notifications.requestPermission, subscribe]);
 
   return (
-    <NotificationContext.Provider value={{ ...notifications, isPushSubscribed: isSubscribed }}>
+    <NotificationContext.Provider value={{
+      ...notifications,
+      isPushSubscribed: isSubscribed,
+      pushDebug: debugInfo
+    }}>
       {children}
     </NotificationContext.Provider>
   );

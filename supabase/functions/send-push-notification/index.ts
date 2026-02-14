@@ -30,11 +30,11 @@ serve(async (req) => {
     }
 
     // Note: VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be set in Supabase secrets
-    const publicKey = Deno.env.get("VAPID_PUBLIC_KEY") || "BK05wU7meph8D_xwlcxbAgHGacOaS17kvHZJkpAgp2IDh0UNYfvHJf1VXlXy7FN53nniJrrDpH0c0I-9A3w7NdY";
+    const publicKey = Deno.env.get("VAPID_PUBLIC_KEY");
     const privateKey = Deno.env.get("VAPID_PRIVATE_KEY");
 
-    if (!privateKey) {
-      console.error("VAPID_PRIVATE_KEY secret is not configured");
+    if (!publicKey || !privateKey) {
+      console.error("VAPID keys are not fully configured in Supabase secrets");
       return new Response(
         JSON.stringify({ error: "Push service configuration incomplete" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
