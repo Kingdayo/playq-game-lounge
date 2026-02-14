@@ -16,7 +16,7 @@ export interface GameSettings {
 export interface Lobby {
   id: string;
   code: string;
-  gameType: 'uno' | 'ludo' | 'pictionary' | 'dominoes';
+  gameType: 'uno' | 'ludo' | 'pictionary' | 'dominoes' | 'whot';
   host: Player;
   players: Player[];
   settings: GameSettings;
@@ -54,4 +54,4 @@ export interface ChatRoom {
 }
 
 export type SoundName = 'dice' | 'card' | 'move' | 'win' | 'error' | 'success' | 'chat';
-export type BGMType = 'uno' | 'ludo' | 'dominoes' | 'pictionary';
+export type BGMType = 'uno' | 'ludo' | 'dominoes' | 'pictionary' | 'whot';
