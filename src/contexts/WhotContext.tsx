@@ -242,6 +242,8 @@ export const WhotProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (idx !== playerIndex) {
           const drawn = newState.deck.splice(0, 1);
           p.hand.push(...drawn);
+          newState.lastCardCalled[p.id] = false;
+          newState.checkCalled[p.id] = false;
         }
       });
       newState.lastActionMessage = `General Market! Everyone else draws 1.`;
@@ -252,6 +254,7 @@ export const WhotProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const drawn = newState.deck.splice(0, cardsToDraw);
       newState.players[targetIndex].hand.push(...drawn);
       newState.lastCardCalled[newState.players[targetIndex].id] = false;
+      newState.checkCalled[newState.players[targetIndex].id] = false;
     }
 
     let nextPlayerIndex = playerIndex;
