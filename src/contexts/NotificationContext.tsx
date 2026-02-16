@@ -1,8 +1,19 @@
-import React, { createContext, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useNotifications, NotificationPermissionState } from '@/hooks/useNotifications';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useGame } from '@/contexts/GameContext';
 import { toast } from 'sonner';
+import { Bell } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface NotificationContextType {
   permission: NotificationPermissionState;
@@ -18,6 +29,7 @@ interface NotificationContextType {
   notifyGameOver: (winnerName: string, gameType: string) => void;
   notifyPlayerReady: (playerName: string) => void;
   isPushSubscribed: boolean;
+  unsubscribePush: () => Promise<boolean>;
   pushDebug: {
     swStatus: string;
     pushSupported: boolean;
@@ -31,14 +43,19 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const notifications = useNotifications();
   const { currentPlayer } = useGame();
-  const { isSubscribed, subscribe, vapidPublicKey, debugInfo } = usePushNotifications(currentPlayer?.id);
+  const { isSubscribed, subscribe, unsubscribe, vapidPublicKey, debugInfo } = usePushNotifications(currentPlayer?.id);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
 
-  // Auto-subscribe to push when permission is granted
+  // Synchronize enabled state with push subscription
   useEffect(() => {
-    if (notifications.permission === 'granted' && notifications.enabled && !isSubscribed && vapidPublicKey && currentPlayer?.id) {
-      subscribe();
+    if (notifications.permission === 'granted' && currentPlayer?.id) {
+      if (notifications.enabled && !isSubscribed && vapidPublicKey) {
+        subscribe();
+      } else if (!notifications.enabled && isSubscribed) {
+        unsubscribe();
+      }
     }
-  }, [notifications.permission, notifications.enabled, isSubscribed, vapidPublicKey, currentPlayer?.id, subscribe]);
+  }, [notifications.permission, notifications.enabled, isSubscribed, vapidPublicKey, currentPlayer?.id, subscribe, unsubscribe]);
 
   // Prompt for permission on first visit if not yet decided
   useEffect(() => {
@@ -46,7 +63,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     const isStandalone = (window.navigator as any).standalone === true || window.matchMedia('(display-mode: standalone)').matches;
 
-    if (!hasAsked) {
+    if (!hasAsked && notifications.permission === 'default') {
       const timer = setTimeout(() => {
         // Special handling for iOS
         if (isIOS && !isStandalone) {
@@ -58,44 +75,85 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           return;
         }
 
-        if (notifications.permission === 'default') {
-          toast('🔔 Enable Notifications?', {
-            description: 'Get notified about messages, game invites, and your turn alerts even when the app is closed!',
-            action: {
-              label: 'Enable',
-              onClick: async () => {
-                const result = await notifications.requestPermission();
-                localStorage.setItem('playq-notification-asked', 'true');
-                if (result === 'granted') {
-                  toast.success('Notifications enabled! 🎉');
-                  // Subscribe to push notifications
-                  await subscribe();
-                } else if (result === 'denied') {
-                  toast.info('Notifications blocked. You can enable them in browser settings.');
-                }
-              },
-            },
-            cancel: {
-              label: 'Later',
-              onClick: () => {
-                localStorage.setItem('playq-notification-asked', 'true');
-              },
-            },
-            duration: 15000,
-          });
-        }
+        setShowPermissionDialog(true);
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [notifications.permission, notifications.requestPermission, subscribe]);
+  }, [notifications.permission]);
+
+  const handleEnableNotifications = async () => {
+    const result = await notifications.requestPermission();
+    localStorage.setItem('playq-notification-asked', 'true');
+    setShowPermissionDialog(false);
+
+    if (result === 'granted') {
+      toast.success('Notifications enabled! 🎉');
+      await subscribe();
+    } else if (result === 'denied') {
+      toast.info('Notifications blocked. You can enable them in browser settings.');
+    }
+  };
+
+  const handleDismissDialog = () => {
+    localStorage.setItem('playq-notification-asked', 'true');
+    setShowPermissionDialog(false);
+  };
 
   return (
     <NotificationContext.Provider value={{
       ...notifications,
       isPushSubscribed: isSubscribed,
+      unsubscribePush: unsubscribe,
       pushDebug: debugInfo
     }}>
       {children}
+
+      <AlertDialog open={showPermissionDialog} onOpenChange={setShowPermissionDialog}>
+        <AlertDialogContent className="glass-card border-primary/20 max-w-md">
+          <AlertDialogHeader className="space-y-4">
+            <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <Bell className="w-8 h-8 text-primary animate-bounce" />
+            </div>
+            <AlertDialogTitle className="text-2xl font-display font-bold text-center gradient-text">
+              Stay in the Game!
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-base">
+              Enable push notifications to receive:
+              <ul className="mt-4 space-y-2 text-left list-none">
+                <li className="flex items-center gap-2">
+                  <span className="text-primary">🎯</span> Your turn alerts in Uno & Ludo
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-primary">💬</span> New chat message notifications
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-primary">🎮</span> Game invitations from friends
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-primary">🚀</span> Alerts when a game is starting
+                </li>
+              </ul>
+              <p className="mt-4 text-sm text-muted-foreground italic">
+                You'll receive notifications even when the app is completely closed.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 flex flex-col sm:flex-row gap-2">
+            <AlertDialogCancel
+              onClick={handleDismissDialog}
+              className="sm:flex-1 border-primary/20 hover:bg-primary/5"
+            >
+              Maybe Later
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleEnableNotifications}
+              className="sm:flex-1 bg-primary text-primary-foreground hover:bg-primary/90 neon-glow-cyan"
+            >
+              Enable Now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </NotificationContext.Provider>
   );
 };

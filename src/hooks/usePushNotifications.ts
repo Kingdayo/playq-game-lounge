@@ -183,23 +183,41 @@ export function usePushNotifications(playerId: string | undefined) {
   }, [registration, vapidPublicKey, playerId]);
 
   const unsubscribe = useCallback(async () => {
-    if (!registration || !playerId) return;
+    if (!registration || !playerId) {
+      console.warn('Cannot unsubscribe: Missing registration or player ID');
+      return false;
+    }
 
     try {
+      console.log('Starting push unsubscribe process...');
+      setDebugInfo(prev => ({ ...prev, subscriptionStatus: 'unsubscribing' }));
+
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
-        await subscription.unsubscribe();
+        const endpoint = subscription.endpoint;
+        const success = await subscription.unsubscribe();
+        console.log('Push unsubscribe success:', success);
 
         // Remove from database
-        await supabase
+        console.log('Removing subscription from database...');
+        const { error } = await supabase
           .from('push_subscriptions')
           .delete()
           .eq('player_id', playerId)
-          .eq('endpoint', subscription.endpoint);
+          .eq('endpoint', endpoint);
+
+        if (error) {
+          console.error('Failed to remove subscription from DB:', error);
+        }
       }
+
       setIsSubscribed(false);
-    } catch (e) {
+      setDebugInfo(prev => ({ ...prev, subscriptionStatus: 'not-subscribed' }));
+      return true;
+    } catch (e: any) {
       console.error('Push unsubscribe failed:', e);
+      setDebugInfo(prev => ({ ...prev, lastError: `Unsubscribe error: ${e.message}` }));
+      return false;
     }
   }, [registration, playerId]);
 

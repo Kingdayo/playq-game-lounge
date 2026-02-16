@@ -20,7 +20,7 @@ serve(async (req) => {
 
   try {
     const requestData = await req.json();
-    const { player_ids, title, body, icon, tag, data, renotify } = requestData;
+    const { player_ids, title, body, icon, tag, data, renotify, actions } = requestData;
 
     if (!player_ids || !Array.isArray(player_ids) || player_ids.length === 0) {
       return new Response(
@@ -78,7 +78,12 @@ serve(async (req) => {
       badge: "/pwa-192x192.png",
       tag: tag || undefined,
       renotify: renotify || false,
-      data: data || {},
+      actions: actions || undefined,
+      data: {
+        ...(data || {}),
+        supabaseUrl: Deno.env.get("SUPABASE_URL"),
+        supabaseAnonKey: Deno.env.get("SUPABASE_ANON_KEY"),
+      },
     });
 
     let sent = 0;
@@ -95,7 +100,11 @@ serve(async (req) => {
           },
         };
 
-        await webpush.sendNotification(pushSubscription, payload);
+        // Include the specific player_id in the payload data for tracking
+        const playerSpecificPayload = JSON.parse(payload);
+        playerSpecificPayload.data.playerId = sub.player_id;
+
+        await webpush.sendNotification(pushSubscription, JSON.stringify(playerSpecificPayload));
         sent++;
       } catch (err: any) {
         failed++;
