@@ -90,13 +90,12 @@ const DominoTile = React.memo(({
         scale: 1.1,
         y: -10,
         rotateZ: 2,
-        boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 0 15px rgba(var(--primary), 0.3)"
       } : {}}
       whileTap={isPlayable && !disabled ? { scale: 0.95 } : {}}
       onClick={() => !disabled && onClick?.()}
-      style={{ rotate: rotation, willChange: 'transform' }}
+      style={{ rotate: rotation, willChange: 'transform, opacity' }}
       className={cn(
-        "relative flex flex-col bg-stone-100 rounded-md border-2 border-stone-300 shadow-lg cursor-pointer transition-all overflow-hidden",
+        "relative flex flex-col bg-stone-100 rounded-md border-2 border-stone-300 shadow-lg cursor-pointer transition-[transform,opacity] duration-300 overflow-hidden group",
         isHorizontal ? "flex-row" : "flex-col",
         sizeClasses[size],
         isPlayable && "ring-2 ring-primary ring-offset-2 ring-offset-zinc-950",
@@ -104,6 +103,10 @@ const DominoTile = React.memo(({
         className
       )}
     >
+      {/* Hover glow - Hardware accelerated */}
+      {isPlayable && !disabled && (
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 shadow-[0_0_15px_rgba(var(--primary),0.3)]" />
+      )}
       <div className="flex-1 h-full w-full">
         {renderSide(tile.sideA)}
       </div>

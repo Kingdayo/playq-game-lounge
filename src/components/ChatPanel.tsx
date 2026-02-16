@@ -29,6 +29,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 }) => {
   const [inputValue, setInputValue] = React.useState('');
   const [showEmojis, setShowEmojis] = React.useState(false);
+  const [visibleMessagesCount, setVisibleMessagesCount] = React.useState(30);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -42,7 +43,13 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     if (isOpen) {
       scrollToBottom();
     }
-  }, [isOpen, messages]);
+  }, [isOpen, messages.length]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setVisibleMessagesCount(30); // Reset when closed
+    }
+  }, [isOpen]);
 
   const handleSend = () => {
     if (inputValue.trim()) {
@@ -88,13 +95,25 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           {/* Messages */}
           <ScrollArea className="flex-1 p-4" ref={scrollRef}>
             <div className="space-y-4 pb-4">
+              {messages.length > visibleMessagesCount && (
+                <div className="flex justify-center pb-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setVisibleMessagesCount(prev => prev + 30)}
+                    className="text-xs text-primary hover:bg-primary/10 h-7"
+                  >
+                    Load older
+                  </Button>
+                </div>
+              )}
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-50 pt-20">
                   <MessageSquare className="w-12 h-12 mb-2" />
                   <p>No messages yet</p>
                 </div>
               ) : (
-                messages.map((message, index) => (
+                messages.slice(-visibleMessagesCount).map((message, index) => (
                 <motion.div
                   key={message.id}
                   initial={{ opacity: 0, y: 20 }}

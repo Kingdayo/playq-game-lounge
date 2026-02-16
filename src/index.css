@@ -255,16 +255,15 @@
 
   /* Gaming button styles */
   .btn-gaming {
-    @apply relative overflow-hidden font-semibold transition-all duration-300;
+    @apply relative overflow-hidden font-semibold transition-[transform,opacity] duration-300;
     background: var(--gradient-primary);
     box-shadow: var(--shadow-neon-cyan);
-    will-change: transform, filter;
+    will-change: transform;
     transform: translateZ(0);
   }
 
   .btn-gaming:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 30px hsla(187, 100%, 50%, 0.5), 0 0 60px hsla(187, 100%, 50%, 0.2);
+    transform: translateY(-2px) translateZ(0);
   }
 
   .btn-gaming::before {
@@ -282,13 +281,13 @@
 
   /* Game card hover effect */
   .game-card {
-    @apply relative overflow-hidden transition-all duration-500;
+    @apply relative overflow-hidden transition-[transform,opacity] duration-500;
     will-change: transform, opacity;
     transform: translateZ(0);
   }
 
   .game-card:hover {
-    transform: translateY(-8px) scale(1.02);
+    transform: translateY(-8px) scale(1.02) translateZ(0);
   }
 
   .game-card::after {
@@ -306,7 +305,21 @@
 
   /* Pulse animation for active elements */
   .pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
+    position: relative;
+    z-index: 1;
+  }
+
+  .pulse-glow::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 40px hsla(187, 100%, 50%, 0.6), 0 0 60px hsla(187, 100%, 50%, 0.3);
+    opacity: 0;
+    animation: pulse-glow-hardware 2s ease-in-out infinite;
+    pointer-events: none;
+    z-index: -1;
+    will-change: transform, opacity;
   }
 
   /* Floating animation */
@@ -335,14 +348,24 @@
 
   /* Shimmer loading effect */
   .shimmer {
+    position: relative;
+    overflow: hidden;
+    background: hsl(var(--muted));
+  }
+
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
     background: linear-gradient(
       90deg,
-      hsl(var(--muted)) 0%,
-      hsl(var(--card)) 50%,
-      hsl(var(--muted)) 100%
+      transparent 0%,
+      hsla(var(--primary), 0.1) 50%,
+      transparent 100%
     );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+    animation: shimmer-hardware 1.5s infinite;
+    will-change: transform;
   }
 
   /* Confetti container */
@@ -417,13 +440,9 @@
   100% { background-position: 0% 50%; }
 }
 
-@keyframes pulse-glow {
-  0%, 100% { 
-    box-shadow: 0 0 20px hsla(187, 100%, 50%, 0.3);
-  }
-  50% { 
-    box-shadow: 0 0 40px hsla(187, 100%, 50%, 0.6), 0 0 60px hsla(187, 100%, 50%, 0.3);
-  }
+@keyframes pulse-glow-hardware {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
 }
 
 @keyframes float {
@@ -439,9 +458,9 @@
   100% { transform: rotate(360deg) scale(1); }
 }
 
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+@keyframes shimmer-hardware {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 @keyframes confetti-fall {

@@ -59,6 +59,7 @@ const WhotCard: React.FC<WhotCardProps> = ({
   return (
     <motion.div
       layoutId={layoutId}
+      style={{ willChange: 'transform, opacity' }}
       whileHover={!disabled && isPlayable ? { y: -10, scale: 1.05 } : {}}
       whileTap={!disabled && isPlayable ? { scale: 0.95 } : {}}
       onClick={() => !disabled && isPlayable && onClick?.()}

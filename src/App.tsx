@@ -16,7 +16,6 @@ import { DominoesProvider } from "@/contexts/DominoesContext";
 import { PictionaryProvider } from "@/contexts/PictionaryContext";
 import { WhotProvider } from "@/contexts/WhotContext";
 import Layout from "@/components/Layout";
-import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { Suspense, lazy } from "react";
 
 // Lazy load pages for better performance
@@ -31,6 +30,7 @@ const DominoesGame = lazy(() => import("./pages/DominoesGame"));
 const PictionaryGame = lazy(() => import("./pages/PictionaryGame"));
 const WhotGame = lazy(() => import("./pages/WhotGame"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const PWAInstallPrompt = lazy(() => import("@/components/PWAInstallPrompt"));
 
 const queryClient = new QueryClient();
 
@@ -76,7 +76,9 @@ const App = () => (
                                     <Route path="*" element={<NotFound />} />
                                   </Routes>
                                 </Suspense>
-                                <PWAInstallPrompt />
+                                <Suspense fallback={null}>
+                                  <PWAInstallPrompt />
+                                </Suspense>
                               </BrowserRouter>
                             </TooltipProvider>
                           </VoiceProvider>

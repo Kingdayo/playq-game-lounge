@@ -25,6 +25,7 @@ const GameCard = memo(({
     <motion.div
       whileHover={{ scale: 1.03, y: -5 }}
       whileTap={{ scale: 0.98 }}
+      style={{ willChange: 'transform, opacity' }}
       className="relative cursor-pointer group"
       onClick={onClick}
     >

@@ -15,8 +15,9 @@ const MaterialLoading: React.FC<MaterialLoadingProps> = ({ isLoading }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          style={{ willChange: 'opacity' }}
           transition={{ duration: 0.3 }}
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/80 backdrop-blur-[4px]"
         >
           <div className="relative">
             {/* Outer ring for Material feel with neon glow */}

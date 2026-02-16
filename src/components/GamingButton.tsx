@@ -67,6 +67,7 @@ const GamingButton = memo(React.forwardRef<HTMLButtonElement, GamingButtonProps>
       <motion.div
         whileHover={{ scale: 1.02, y: -2 }}
         whileTap={{ scale: 0.98 }}
+        style={{ willChange: 'transform, opacity' }}
         className={cn(pulseEffect && 'pulse-glow rounded-xl')}
       >
         <button

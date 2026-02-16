@@ -35,7 +35,6 @@ const Token = memo(({ token, isSelectable, onClick, isStacked }: TokenProps) => 
             whileHover={isSelectable ? {
                 scale: 1.2,
                 z: 10,
-                filter: "brightness(1.2) drop-shadow(0 0 8px currentColor)"
             } : {}}
             whileTap={isSelectable ? { scale: 0.9 } : {}}
             onClick={(e) => {
@@ -45,14 +44,18 @@ const Token = memo(({ token, isSelectable, onClick, isStacked }: TokenProps) => 
                 }
             }}
             onKeyDown={handleKeyDown}
-            style={{ willChange: 'transform' }}
+            style={{ willChange: 'transform, opacity' }}
             className={cn(
-                "w-4 h-4 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full border-2 border-white/40 shadow-lg cursor-pointer focus:outline-none relative group",
+                "w-4 h-4 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full border-2 border-white/40 shadow-lg cursor-pointer focus:outline-none relative group transition-[transform,opacity] duration-300",
                 bgColor,
                 isSelectable && "ring-4 ring-primary ring-offset-2 ring-offset-zinc-900 z-10",
                 isStacked && "w-3 h-3 sm:w-6 sm:h-6 md:w-7 md:h-7 border"
             )}
         >
+            {/* Hover glow - Hardware accelerated */}
+            {isSelectable && (
+                <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-[0_0_12px_rgba(255,255,255,0.6)]" />
+            )}
             {isSelectable && (
                 <motion.div
                     layoutId={`${token.id}-glow`}

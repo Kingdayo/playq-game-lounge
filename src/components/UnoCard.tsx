@@ -78,19 +78,18 @@ const UnoCard = memo(({
     <motion.div
       layout
       layoutId={layoutId}
-      style={{ willChange: 'transform' }}
+      style={{ willChange: 'transform, opacity' }}
       initial={{ scale: 0.5, opacity: 0, y: 50 }}
       animate={{ scale: 1, opacity: 1, y: 0 }}
       exit={{ scale: 0.5, opacity: 0, y: -50 }}
       whileHover={isPlayable && !disabled ? {
         y: -30,
         scale: 1.1,
-        boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1), 0 0 20px rgba(255, 255, 255, 0.4)"
       } : {}}
       whileTap={isPlayable && !disabled ? { scale: 0.95 } : {}}
       onClick={!disabled && isPlayable ? onClick : undefined}
       className={cn(
-        "relative rounded-xl border-4 border-white shadow-xl overflow-hidden cursor-pointer transition-all duration-300",
+        "relative rounded-xl border-4 border-white shadow-xl overflow-hidden cursor-pointer transition-[transform,opacity] duration-300 group",
         colorMap[card.color],
         sizeClasses[size],
         !isPlayable && !disabled && "opacity-80 grayscale-[0.2]",
@@ -98,6 +97,11 @@ const UnoCard = memo(({
         isPlayable && "ring-4 ring-primary ring-offset-2 ring-offset-background z-10"
       )}
     >
+      {/* Hover/Glow effect - Hardware accelerated */}
+      {isPlayable && !disabled && (
+        <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -z-10 shadow-[0_0_20px_rgba(255,255,255,0.4)]" />
+      )}
+
       {/* Corner Values */}
       <div className="absolute top-1 left-1 font-black text-white leading-none">
         {card.value === 'draw2' ? '+2' : card.value === 'draw4' ? '+4' : card.value === 'wild' ? 'W' : card.value}
