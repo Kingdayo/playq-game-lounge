@@ -18,8 +18,10 @@ import {
 import PlayerAvatar from '@/components/PlayerAvatar';
 import { useGame } from '@/contexts/GameContext';
 import { useChat, ChatRoom, ChatMessage } from '@/contexts/ChatContext';
-import NewChatDialog from '@/components/NewChatDialog';
 import { cn } from '@/lib/utils';
+import { Suspense, lazy } from 'react';
+
+const NewChatDialog = lazy(() => import('@/components/NewChatDialog'));
 
 const Chat: React.FC = () => {
   const { currentPlayer } = useGame();
@@ -42,6 +44,7 @@ const Chat: React.FC = () => {
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [visibleMessagesCount, setVisibleMessagesCount] = useState(50);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const selectedRoom = rooms.find(r => r.id === activeRoomId);
@@ -83,6 +86,7 @@ const Chat: React.FC = () => {
     setActiveRoomId(roomId);
     setIsMobileChatOpen(true);
     markAsRead(roomId);
+    setVisibleMessagesCount(50); // Reset count when switching rooms
   };
 
   const handleChatCreated = (roomId: string) => {
@@ -279,12 +283,24 @@ const Chat: React.FC = () => {
             {/* Messages */}
             <ScrollArea ref={scrollRef} className="flex-1 p-4">
               <div className="space-y-4">
+                {currentRoomMessages.length > visibleMessagesCount && (
+                  <div className="flex justify-center pb-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setVisibleMessagesCount(prev => prev + 50)}
+                      className="text-xs text-primary hover:bg-primary/10"
+                    >
+                      Load older messages
+                    </Button>
+                  </div>
+                )}
                 {currentRoomMessages.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-muted-foreground text-sm italic pt-20">
                     No messages yet. Say hello!
                   </div>
                 ) : (
-                  currentRoomMessages.map((message, index) => {
+                  currentRoomMessages.slice(-visibleMessagesCount).map((message, index) => {
                     const isMe = message.sender_id === currentPlayer?.id;
                     const isSystem = message.is_system;
 
@@ -390,11 +406,13 @@ const Chat: React.FC = () => {
       </div>
 
       {/* New Chat Dialog */}
-      <NewChatDialog
-        isOpen={isNewChatOpen}
-        onClose={() => setIsNewChatOpen(false)}
-        onChatCreated={handleChatCreated}
-      />
+      <Suspense fallback={null}>
+        <NewChatDialog
+          isOpen={isNewChatOpen}
+          onClose={() => setIsNewChatOpen(false)}
+          onChatCreated={handleChatCreated}
+        />
+      </Suspense>
 
       {/* Delete Confirmation */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => {

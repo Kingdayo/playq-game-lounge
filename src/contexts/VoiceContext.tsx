@@ -77,8 +77,8 @@ function AudioElement({ stream, volume = 1 }: { stream: MediaStream; volume?: nu
         window.removeEventListener('click', retry);
         window.removeEventListener('touchstart', retry);
       };
-      window.addEventListener('click', retry);
-      window.addEventListener('touchstart', retry);
+      window.addEventListener('click', retry, { passive: true });
+      window.addEventListener('touchstart', retry, { passive: true });
     }
   }, []);
 

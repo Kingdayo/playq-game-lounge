@@ -5,10 +5,14 @@ import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import MaterialLoading from './MaterialLoading';
 import { useLoading } from '@/contexts/LoadingContext';
+import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 
 const Layout: React.FC = () => {
   const location = useLocation();
   const { isLoading, triggerLoading } = useLoading();
+
+  // Initialize performance monitoring
+  usePerformanceMonitor();
 
   const isInitialMount = React.useRef(true);
 

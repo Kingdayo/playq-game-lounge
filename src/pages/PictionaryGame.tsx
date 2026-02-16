@@ -24,7 +24,7 @@ import VoiceControls from '@/components/VoiceControls';
 import { toast } from '@/components/ui/use-toast';
 import { Stroke, Point } from '@/lib/pictionary';
 import Confetti from '@/components/Confetti';
-import { cn } from '@/lib/utils';
+import { cn, throttle } from '@/lib/utils';
 
 const COLORS = [
   '#FFFFFF', '#000000', '#FF0000', '#00FF00', '#0000FF',
@@ -83,9 +83,10 @@ const PictionaryCanvas: React.FC<{
         }
     };
 
+    const throttledResize = throttle(resizeCanvas, 150);
     resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    return () => window.removeEventListener('resize', resizeCanvas);
+    window.addEventListener('resize', throttledResize);
+    return () => window.removeEventListener('resize', throttledResize);
   }, [drawAllStrokes]);
 
   useEffect(() => {
