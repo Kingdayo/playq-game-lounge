@@ -19,7 +19,8 @@ const VoiceChat: React.FC = () => {
     setVolume,
     error,
     permissionDenied,
-    resumeAudio
+    resumeAudio,
+    reconnect
   } = useVoice();
 
   const { currentLobby, currentPlayer } = useGame();
@@ -127,33 +128,51 @@ const VoiceChat: React.FC = () => {
                 max={100}
                 step={1}
                 className="flex-1"
+                aria-label="Voice chat volume"
               />
-              <span className="text-xs text-muted-foreground w-8">
+              <span className="text-xs text-muted-foreground w-8" aria-live="polite">
                 {volume}%
               </span>
             </div>
 
-            {/* Mute button */}
-            <Button
-              variant={isMuted ? 'destructive' : 'outline'}
-              onClick={async () => {
-                await resumeAudio();
-                toggleMute();
-              }}
-              className="w-full"
-            >
-              {isMuted ? (
-                <>
-                  <MicOff className="w-4 h-4 mr-2" />
-                  Unmute
-                </>
-              ) : (
-                <>
-                  <Mic className="w-4 h-4 mr-2" />
-                  Mute
-                </>
-              )}
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              {/* Mute button */}
+              <Button
+                variant={isMuted ? 'destructive' : 'outline'}
+                onClick={async () => {
+                  await resumeAudio();
+                  toggleMute();
+                }}
+                className="w-full"
+                aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
+              >
+                {isMuted ? (
+                  <>
+                    <MicOff className="w-4 h-4 mr-2" />
+                    Unmute
+                  </>
+                ) : (
+                  <>
+                    <Mic className="w-4 h-4 mr-2" />
+                    Mute
+                  </>
+                )}
+              </Button>
+
+              {/* Reconnect button */}
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  await resumeAudio();
+                  reconnect();
+                }}
+                className="w-full"
+                aria-label="Refresh voice connection"
+              >
+                <Phone className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
           </motion.div>
         )}
 
@@ -163,6 +182,7 @@ const VoiceChat: React.FC = () => {
           onClick={isConnected ? disconnect : handleConnect}
           disabled={isConnecting}
           className={`w-full ${!isConnected && !isConnecting ? 'btn-gaming' : ''}`}
+          aria-label={isConnected ? "Leave voice chat" : "Join voice chat"}
         >
           {isConnected ? (
             <>

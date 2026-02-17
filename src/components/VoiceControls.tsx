@@ -43,6 +43,7 @@ const VoiceControls: React.FC = () => {
             await resumeAudio();
             toggleMute();
           }}
+          aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
         >
           {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           {!isMuted && isSpeaking && (
@@ -59,6 +60,8 @@ const VoiceControls: React.FC = () => {
           size="icon"
           className="rounded-full shadow-lg btn-gaming"
           onClick={() => setIsOpen(!isOpen)}
+          aria-label="Voice settings"
+          aria-expanded={isOpen}
         >
           <Settings className="w-4 h-4" />
         </Button>
