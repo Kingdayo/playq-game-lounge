@@ -233,7 +233,8 @@ export async function sendPushToPlayers(
   notification: { title: string; body: string; icon?: string; tag?: string; data?: Record<string, unknown> }
 ) {
   try {
-    await supabase.functions.invoke('send-push-notification', {
+    console.log('Attempting to send push notification to players:', playerIds);
+    const { data, error } = await supabase.functions.invoke('send-push-notification', {
       body: {
         player_ids: playerIds,
         title: notification.title,
@@ -244,7 +245,16 @@ export async function sendPushToPlayers(
         data: notification.data || {},
       },
     });
+
+    if (error) {
+      console.error('Error response from send-push-notification edge function:', error);
+      return { error, data: null };
+    }
+
+    console.log('Push notification sent successfully, response data:', data);
+    return { data, error: null };
   } catch (e) {
-    console.warn('Failed to send push notification:', e);
+    console.error('Exception while calling send-push-notification edge function:', e);
+    return { error: e, data: null };
   }
 }
