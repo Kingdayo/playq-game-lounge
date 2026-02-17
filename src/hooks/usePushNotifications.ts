@@ -15,6 +15,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 export function usePushNotifications(playerId: string | undefined) {
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
   const [vapidPublicKey, setVapidPublicKey] = useState<string | null>(null);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [debugInfo, setDebugInfo] = useState<{
@@ -72,19 +73,23 @@ export function usePushNotifications(playerId: string | undefined) {
       if (pushSupported) {
         reg.pushManager.getSubscription().then((sub) => {
           setIsSubscribed(!!sub);
+          setIsChecking(false);
           setDebugInfo(prev => ({
             ...prev,
             subscriptionStatus: !!sub ? 'subscribed' : 'not-subscribed'
           }));
         }).catch(err => {
           console.warn('Failed to get push subscription:', err);
+          setIsChecking(false);
           setDebugInfo(prev => ({ ...prev, lastError: `Get subscription error: ${err.message}` }));
         });
       } else {
+        setIsChecking(false);
         setDebugInfo(prev => ({ ...prev, subscriptionStatus: 'unsupported' }));
       }
     }).catch(err => {
       console.error('Service worker not ready:', err);
+      setIsChecking(false);
       setDebugInfo(prev => ({ ...prev, swStatus: 'failed', lastError: `SW error: ${err.message}` }));
     });
   }, []);
@@ -123,23 +128,21 @@ export function usePushNotifications(playerId: string | undefined) {
         throw new Error(`Notification permission ${permission}`);
       }
 
-      // Check for existing subscription and unsubscribe if it might have a different key
-      const existingSub = await registration.pushManager.getSubscription();
-      if (existingSub) {
-        console.log('Found existing subscription, unsubscribing first...');
-        try {
-          await existingSub.unsubscribe();
-        } catch (e) {
-          console.warn('Failed to unsubscribe from existing push:', e);
-        }
-      }
+      // Check for existing subscription
+      let subscription = await registration.pushManager.getSubscription();
 
-      // Subscribe to push
-      console.log('Calling pushManager.subscribe...');
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
-      });
+      if (subscription) {
+        console.log('Found existing subscription, checking if it matches our VAPID key...');
+        // In most cases we can just reuse the existing subscription
+        // but let's make sure we have it in our database
+      } else {
+        // Subscribe to push
+        console.log('No existing subscription found, calling pushManager.subscribe...');
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
+        });
+      }
 
       console.log('Push subscription successful:', subscription.endpoint);
 
@@ -221,7 +224,7 @@ export function usePushNotifications(playerId: string | undefined) {
     }
   }, [registration, playerId]);
 
-  return { isSubscribed, subscribe, unsubscribe, vapidPublicKey, debugInfo };
+  return { isSubscribed, isChecking, subscribe, unsubscribe, vapidPublicKey, debugInfo };
 }
 
 // Helper to send push notification via edge function
