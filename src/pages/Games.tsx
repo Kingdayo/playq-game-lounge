@@ -6,7 +6,8 @@ import {
   Brush, 
   Layers, 
   Dices, 
-  ArrowRight
+  ArrowRight,
+  Zap
 } from 'lucide-react';
 import GameCard from '@/components/GameCard';
 import { useGame } from '@/contexts/GameContext';
@@ -72,6 +73,21 @@ const games = [
       'Empty hand or lowest sum wins',
     ],
   },
+  {
+    id: 'whot',
+    title: 'Whot',
+    description: 'A popular African card game. Match shapes and numbers, use special cards like Pick Two, Hold On, and Pick Three to outsmart your opponents!',
+    icon: Zap,
+    playerCount: '2-4 Players',
+    gradient: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)',
+    glowColor: 'rgba(168, 85, 247, 0.3)',
+    rules: [
+      'Match by shape or number',
+      'Special cards have effects',
+      'Use Whot cards as wildcards',
+      'First to empty hand wins',
+    ],
+  },
 ];
 
 const Games: React.FC = () => {
@@ -79,7 +95,7 @@ const Games: React.FC = () => {
   const { createLobby } = useGame();
 
   const handleCreateGame = async (gameId: string) => {
-    const lobby = await createLobby(gameId as 'uno' | 'ludo' | 'pictionary' | 'dominoes');
+    const lobby = await createLobby(gameId as 'uno' | 'ludo' | 'pictionary' | 'dominoes' | 'whot');
     navigate(`/lobby/${lobby.code}`);
   };
 
