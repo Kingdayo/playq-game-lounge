@@ -43,19 +43,29 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const notifications = useNotifications();
   const { currentPlayer } = useGame();
-  const { isSubscribed, subscribe, unsubscribe, vapidPublicKey, debugInfo } = usePushNotifications(currentPlayer?.id);
+  const { isSubscribed, isChecking, subscribe, unsubscribe, vapidPublicKey, debugInfo } = usePushNotifications(currentPlayer?.id);
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
 
   // Synchronize enabled state with push subscription
   useEffect(() => {
-    if (notifications.permission === 'granted' && currentPlayer?.id) {
+    // Only attempt to synchronize once we've finished checking the current subscription status
+    if (!isChecking && notifications.permission === 'granted' && currentPlayer?.id) {
       if (notifications.enabled && !isSubscribed && vapidPublicKey) {
+        console.log('Push subscription missing but notifications enabled, subscribing...');
         subscribe();
       } else if (!notifications.enabled && isSubscribed) {
+        console.log('Notifications disabled but push subscription exists, unsubscribing...');
         unsubscribe();
       }
     }
-  }, [notifications.permission, notifications.enabled, isSubscribed, vapidPublicKey, currentPlayer?.id, subscribe, unsubscribe]);
+  }, [notifications.permission, notifications.enabled, isSubscribed, isChecking, vapidPublicKey, currentPlayer?.id, subscribe, unsubscribe]);
+
+  // Set asked flag if permission is already decided
+  useEffect(() => {
+    if (notifications.permission !== 'default' && notifications.permission !== 'unsupported') {
+      localStorage.setItem('playq-notification-asked', 'true');
+    }
+  }, [notifications.permission]);
 
   // Prompt for permission on first visit if not yet decided
   useEffect(() => {
