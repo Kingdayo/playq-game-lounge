@@ -17,6 +17,7 @@ interface VoiceContextType {
   error: string | null;
   permissionDenied: boolean;
   resumeAudio: () => Promise<void>;
+  reconnect: () => Promise<void>;
 }
 
 const VoiceContext = createContext<VoiceContextType | undefined>(undefined);
@@ -28,6 +29,13 @@ const ICE_SERVERS: RTCConfiguration = {
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.ekiga.net' },
+    { urls: 'stun:stun.ideasip.com' },
+    { urls: 'stun:stun.schlund.de' },
+    { urls: 'stun:stun.voiparound.com' },
+    { urls: 'stun:stun.voipbuster.com' },
+    { urls: 'stun:stun.voipstunt.com' },
+    { urls: 'stun:stun.voxgratia.org' },
     // Free TURN relay servers for NAT traversal (required for mobile/carrier networks)
     {
       urls: 'turn:openrelay.metered.ca:80',
@@ -52,6 +60,7 @@ const ICE_SERVERS: RTCConfiguration = {
     }] : []),
   ],
   iceTransportPolicy: 'all',
+  iceCandidatePoolSize: 10,
 };
 
 export const useVoice = () => {
@@ -89,13 +98,15 @@ function AudioElement({ stream, volume = 1 }: { stream: MediaStream; volume?: nu
     }
   }, [stream, attemptPlay]);
 
-  // Set volume from prop — this is the PRIMARY playback path for Bluetooth/external audio
+  // Audio playback is now handled via AudioContext for normalization.
+  // We keep the <audio> element for iOS Safari compatibility and stream lifecycle management,
+  // but we keep it muted to avoid double audio.
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.muted = false;
-      audioRef.current.volume = Math.max(0, Math.min(1, volume));
+      audioRef.current.muted = true;
+      audioRef.current.volume = 0;
     }
-  }, [volume]);
+  }, []);
 
   // Handle audio output device changes via setSinkId
   useEffect(() => {
@@ -150,6 +161,8 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const remoteStreamsRef = useRef<Record<string, MediaStream>>({});
   const iceQueuesRef = useRef<Record<string, RTCIceCandidateInit[]>>({});
   const cleanupTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const wakeLockRef = useRef<any>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const localPlayerRef = useRef<Player | null>(null);
   const lobbyCodeRef = useRef<string | null>(null);
@@ -168,6 +181,39 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             await audioContextRef.current.resume();
         }
     }
+  }, []);
+
+  const requestWakeLock = useCallback(async () => {
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+        console.log('Wake Lock acquired');
+      } catch (err) {
+        console.warn('Wake Lock request failed:', err);
+      }
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release().then(() => {
+        wakeLockRef.current = null;
+        console.log('Wake Lock released');
+      });
+    }
+  }, []);
+
+  const updateBitrate = useCallback((pc: RTCPeerConnection, bitrate: number) => {
+    pc.getSenders().forEach(sender => {
+      if (sender.track && sender.track.kind === 'audio') {
+        const parameters = sender.getParameters();
+        if (!parameters.encodings) {
+          parameters.encodings = [{}];
+        }
+        parameters.encodings[0].maxBitrate = bitrate;
+        sender.setParameters(parameters).catch(e => console.warn('Failed to set bitrate:', e));
+      }
+    });
   }, []);
 
   const updateParticipantsList = useCallback(() => {
@@ -209,9 +255,19 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       source.connect(analyser);
       analysersRef.current[playerId] = analyser;
 
-      // Remote playback is handled by <audio> elements (not AudioContext)
-      // to ensure proper routing to Bluetooth/external audio devices.
-      // AudioContext is only used here for VAD (voice activity detection).
+      if (isRemote && masterGainRef.current) {
+        // Add a compressor to remote streams to normalize volume (normalization)
+        const compressor = audioContextRef.current.createDynamicsCompressor();
+        compressor.threshold.setValueAtTime(-24, audioContextRef.current.currentTime);
+        compressor.knee.setValueAtTime(30, audioContextRef.current.currentTime);
+        compressor.ratio.setValueAtTime(12, audioContextRef.current.currentTime);
+        compressor.attack.setValueAtTime(0.003, audioContextRef.current.currentTime);
+        compressor.release.setValueAtTime(0.25, audioContextRef.current.currentTime);
+
+        source.connect(compressor);
+        compressor.connect(masterGainRef.current);
+        console.log(`Remote stream for ${playerId} routed through AudioContext with normalization`);
+      }
 
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
@@ -285,6 +341,10 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         makingOfferRef.current[remoteId] = true;
         await pc.setLocalDescription();
+
+        // Suggest optimal bitrate (32kbps for voice is usually plenty and saves bandwidth)
+        updateBitrate(pc, 32000);
+
         if (channelRef.current) {
           channelRef.current.send({
             type: 'broadcast',
@@ -322,6 +382,21 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     pc.ontrack = (event) => {
       console.log(`Received remote track from ${remoteId}`);
       const stream = event.streams[0];
+
+      const track = event.track;
+      track.onunmute = () => {
+        console.log(`Track from ${remoteId} unmuted`);
+      };
+      track.onmute = () => {
+        console.log(`Track from ${remoteId} muted (one-way audio detected?)`);
+        // Proactively restart ICE if we detect silence/mute on a track that should be active
+        // but only if the connection is supposedly healthy and we are not in the middle of a renegotiation
+        if (pc.iceConnectionState === 'connected' && pc.signalingState === 'stable') {
+            console.log(`Proactively restarting ICE for ${remoteId} due to track mute`);
+            pc.restartIce();
+        }
+      };
+
       remoteStreamsRef.current[remoteId] = stream;
       setupAudioSystem(stream, remoteId, true);
       updateParticipantsListRef.current?.();
@@ -450,6 +525,14 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     lobbyCodeRef.current = null;
     isConnectedRef.current = false;
     isConnectingRef.current = false;
+
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+
+    releaseWakeLock();
+
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
@@ -483,6 +566,19 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setParticipants([]);
     setSpeakingStates({});
   }, []);
+
+  const connectRef = useRef<any>(null);
+
+  const reconnect = useCallback(async () => {
+    if (lobbyCodeRef.current && localPlayerRef.current && connectRef.current) {
+        const code = lobbyCodeRef.current;
+        const player = localPlayerRef.current;
+        disconnect();
+        // Delay to ensure cleanup before reconnecting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await connectRef.current(code, player);
+    }
+  }, [disconnect]);
 
   const connect = useCallback(async (roomName: string, player: Player) => {
     if (lobbyCodeRef.current === roomName && (isConnectedRef.current || isConnectingRef.current)) {
@@ -519,12 +615,29 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       channel
         .on('broadcast', { event: 'signal' }, (payload) => handleSignalRef.current?.(payload))
+        .on('broadcast', { event: 'ping' }, ({ payload }) => {
+            // Heartbeat response: if we get a ping, we are still connected to that peer
+            // This helps keep the Supabase channel active
+        })
         .subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
             setIsConnected(true);
             isConnectedRef.current = true;
             setIsConnecting(false);
             isConnectingRef.current = false;
+
+            requestWakeLock();
+
+            // Start heartbeat
+            heartbeatIntervalRef.current = setInterval(() => {
+                if (channelRef.current && isConnectedRef.current) {
+                    channelRef.current.send({
+                        type: 'broadcast',
+                        event: 'ping',
+                        payload: { from: player.id }
+                    });
+                }
+            }, 15000);
 
             channel.send({
               type: 'broadcast',
@@ -589,6 +702,10 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         masterGainRef.current.gain.setTargetAtTime(newVolume / 100, audioContextRef.current?.currentTime || 0, 0.1);
     }
   }, []);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     handleSignalRef.current = handleSignal;
@@ -670,7 +787,8 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setVolume,
         error,
         permissionDenied,
-        resumeAudio
+        resumeAudio,
+        reconnect
       }}
     >
       {children}
