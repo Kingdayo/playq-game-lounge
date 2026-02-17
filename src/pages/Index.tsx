@@ -67,10 +67,10 @@ const games = [
     id: 'whot',
     title: 'Whot',
     description: 'The classic African card game! Match shapes and numbers to empty your hand.',
-    icon: Layers,
+    icon: Zap,
     playerCount: '2-4 Players',
-    gradient: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-    glowColor: 'rgba(139, 92, 246, 0.3)',
+    gradient: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)',
+    glowColor: 'rgba(168, 85, 247, 0.3)',
   },
 ];
 
@@ -191,7 +191,7 @@ const Index: React.FC = () => {
           {[
             { icon: Users, label: 'Active Players', value: '2.4K' },
             { icon: Zap, label: 'Games Today', value: '847' },
-            { icon: Sparkles, label: 'Games Available', value: '4' },
+            { icon: Sparkles, label: 'Games Available', value: '5' },
           ].map((stat, index) => (
             <motion.div
               key={stat.label}
