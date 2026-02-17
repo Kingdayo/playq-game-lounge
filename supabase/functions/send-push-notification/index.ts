@@ -3,18 +3,17 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 import webpush from "npm:web-push";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://playqre.netlify.app",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, prefer",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE",
+  "Access-Control-Max-Age": "86400",
 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", {
+    return new Response(null, {
       status: 200,
-      headers: {
-        ...corsHeaders,
-      }
+      headers: corsHeaders,
     });
   }
 
