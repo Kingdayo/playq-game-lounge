@@ -117,10 +117,11 @@ export function useNotifications() {
   }, [enabled, permission, fallbackNotification]);
 
   // Specific notification helpers
-  const notifyChatMessage = useCallback((senderName: string, message: string, roomId?: string) => {
+  const notifyChatMessage = useCallback((senderName: string, message: string, roomId?: string, roomName?: string) => {
+    const isGroup = !!roomName;
     sendNotification({
-      title: `💬 ${senderName}`,
-      body: message.length > 100 ? message.substring(0, 100) + '…' : message,
+      title: isGroup ? `👥 ${roomName}` : `💬 ${senderName}`,
+      body: isGroup ? `${senderName}: ${message}` : (message.length > 100 ? message.substring(0, 100) + '…' : message),
       tag: `chat-${roomId || 'general'}`,
       data: { type: 'chat', roomId },
     });

@@ -59,6 +59,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : {};
   });
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const roomsRef = useRef<ChatRoom[]>([]);
+
+  // Update roomsRef whenever rooms state changes
+  useEffect(() => {
+    roomsRef.current = rooms;
+  }, [rooms]);
 
   // Persist unread counts
   useEffect(() => {
@@ -183,7 +189,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     setRooms(mappedRooms);
-  }, [currentPlayer]);
+  }, [currentPlayer, unreadCounts]);
 
   const loadMessages = useCallback(async (roomId: string) => {
     const { data } = await supabase
@@ -218,12 +224,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .neq('player_id', currentPlayer.id);
 
     if (participants && participants.length > 0) {
+      const room = roomsRef.current.find(r => r.id === roomId);
       const otherPlayerIds = participants.map(p => p.player_id);
+
+      const isGroup = room?.type === 'group';
+      const title = isGroup ? `👥 ${room.name}` : `💬 ${currentPlayer.name}`;
+      const body = isGroup ? `${currentPlayer.name}: ${content.trim()}` : content.trim();
+
       sendPushToPlayers(otherPlayerIds, {
-        title: `💬 ${currentPlayer.name}`,
-        body: content.trim().length > 100 ? content.trim().substring(0, 100) + '…' : content.trim(),
+        title,
+        body: body.length > 100 ? body.substring(0, 100) + '…' : body,
         tag: `chat-${roomId}`,
-        data: { type: 'chat', roomId },
+        data: {
+          type: 'chat',
+          roomId,
+          roomName: room?.name,
+          senderName: currentPlayer.name,
+          senderAvatar: currentPlayer.avatar
+        },
       });
     }
   }, [currentPlayer]);
@@ -284,7 +302,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       title: '💬 New Message',
       body: `${currentPlayer.name} started a conversation with you`,
       tag: `chat-${room.id}`,
-      data: { type: 'chat', roomId: room.id },
+      data: {
+        type: 'chat',
+        roomId: room.id,
+        senderName: currentPlayer.name,
+        senderAvatar: currentPlayer.avatar
+      },
     });
 
     await loadRooms();
@@ -329,7 +352,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         title: '👥 New Group Chat',
         body: `${currentPlayer.name} added you to the group "${name}"`,
         tag: `chat-${room.id}`,
-        data: { type: 'chat', roomId: room.id },
+        data: {
+          type: 'chat',
+          roomId: room.id,
+          roomName: name,
+          senderName: currentPlayer.name,
+          senderAvatar: currentPlayer.avatar
+        },
       });
     }
 
@@ -424,7 +453,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const newMsg = payload.new as ChatMessage;
 
           // If we don't have this room yet, reload rooms
-          if (!rooms.some(r => r.id === newMsg.room_id)) {
+          if (!roomsRef.current.some(r => r.id === newMsg.room_id)) {
             loadRooms();
           }
 
@@ -438,7 +467,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } else {
             // Increment unread count for the room and send notification
             if (newMsg.sender_id !== currentPlayer.id) {
-              notifyChatMessage(newMsg.sender_name, newMsg.content, newMsg.room_id);
+              const room = roomsRef.current.find(r => r.id === newMsg.room_id);
+              notifyChatMessage(
+                newMsg.sender_name,
+                newMsg.content,
+                newMsg.room_id,
+                room?.type === 'group' ? room.name : undefined
+              );
+
               setUnreadCounts(prev => ({
                 ...prev,
                 [newMsg.room_id]: (prev[newMsg.room_id] || 0) + 1
@@ -472,7 +508,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentPlayer, activeRoomId]);
+  }, [currentPlayer, activeRoomId, loadRooms, notifyChatMessage]);
 
   return (
     <ChatContext.Provider value={{
