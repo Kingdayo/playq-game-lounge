@@ -51,17 +51,28 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get all subscriptions for the target players
-    const { data: subscriptions, error } = await supabase
+    const { data: subscriptions, error: subError } = await supabase
       .from("push_subscriptions")
       .select("*")
       .in("player_id", player_ids);
 
-    if (error) {
+    if (subError) {
       return new Response(
         JSON.stringify({ error: "Failed to fetch subscriptions" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Get profiles for the target players to enrich the payload (useful for inline replies)
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("player_id, name, avatar")
+      .in("player_id", player_ids);
+
+    const profileMap = (profiles || []).reduce((acc: any, prof: any) => {
+      acc[prof.player_id] = prof;
+      return acc;
+    }, {});
 
     if (!subscriptions || subscriptions.length === 0) {
       return new Response(
@@ -70,20 +81,20 @@ serve(async (req) => {
       );
     }
 
-    const payload = JSON.stringify({
+    const basePayload = {
       title: title || "PlayQ",
       body: body || "",
       icon: icon || "/pwa-192x192.png",
       badge: "/pwa-192x192.png",
       tag: tag || undefined,
-      renotify: renotify || false,
+      renotify: renotify !== undefined ? renotify : true,
       actions: actions || undefined,
       data: {
         ...(data || {}),
         supabaseUrl: Deno.env.get("SUPABASE_URL"),
         supabaseAnonKey: Deno.env.get("SUPABASE_ANON_KEY"),
       },
-    });
+    };
 
     let sent = 0;
     let failed = 0;
@@ -99,9 +110,15 @@ serve(async (req) => {
           },
         };
 
-        // Include the specific player_id in the payload data for tracking
-        const playerSpecificPayload = JSON.parse(payload);
+        // Enrich the payload with recipient-specific info
+        const playerSpecificPayload = JSON.parse(JSON.stringify(basePayload));
         playerSpecificPayload.data.playerId = sub.player_id;
+
+        const profile = profileMap[sub.player_id];
+        if (profile) {
+          playerSpecificPayload.data.playerName = profile.name;
+          playerSpecificPayload.data.playerAvatar = profile.avatar;
+        }
 
         await webpush.sendNotification(pushSubscription, JSON.stringify(playerSpecificPayload));
         sent++;
